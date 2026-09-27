@@ -18,10 +18,20 @@ class ServerControl(
 ) {
     private val appContext = context.applicationContext
 
-    private val script: String by lazy {
-        appContext.assets.open(SCRIPT_ASSET).bufferedReader(Charsets.UTF_8)
-            .use { it.readText() }
+    /**
+     * Скрипт управления сервером из ассетов. null - сборка без server-control
+     * (например, open-source): быстрой установки на VPS просто нет, ронять
+     * приложение на этом нельзя - отдаём ошибку.
+     */
+    private val scriptOrNull: String? by lazy {
+        runCatching {
+            appContext.assets.open(SCRIPT_ASSET).bufferedReader(Charsets.UTF_8)
+                .use { it.readText() }
+        }.getOrNull()
     }
+
+    private fun missingScript(): ControlResponse =
+        ControlResponse(proto = 2, result = "err", code = "internal", msg = SCRIPT_MISSING)
 
     /** Команда запуска скрипта с эскалацией по rootMode (скрипт идёт в stdin). */
     private fun remoteCmd(argv: List<String>, cfg: SshConfig): String {
@@ -43,6 +53,7 @@ class ServerControl(
         if (cfg.ip.isBlank()) {
             return@withContext ControlResponse(proto = 2, result = "err", code = "transport", msg = "no SSH config")
         }
+        val script = scriptOrNull ?: return@withContext missingScript()
         val stdin = if (cfg.rootMode == SshConfig.SUDO_PASS) {
             effectiveSudoPassword(cfg) + "\n" + script
         } else {
@@ -98,6 +109,7 @@ class ServerControl(
             return@withContext ControlResponse(proto = 2, result = "err", code = "transport", msg = "no SSH config")
         }
         val target = "$serverPrefix/control.sh"
+        val script = scriptOrNull ?: return@withContext missingScript()
         val cmd = when (cfg.rootMode) {
             SshConfig.SUDO_NOPASS -> "sudo -n bash -c 'cat > $target'"
             SshConfig.SUDO_PASS   -> "sudo -k -S -p '' bash -c 'cat > $target'"
@@ -182,6 +194,8 @@ class ServerControl(
 
     companion object {
         const val SCRIPT_ASSET = "free-turn-control.sh"
+        private const val SCRIPT_MISSING =
+            "Скрипт управления сервером не входит в эту сборку (соберите её с каталогом server-control)"
 
         /** statusd-ассет для uname -m; null = для арки биндла нет. */
         fun statusdAssetFor(unameM: String): String? = when (unameM.trim()) {
