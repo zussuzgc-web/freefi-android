@@ -1,5 +1,16 @@
 # Changelog
 
+## [6.0.2](https://github.com/zussuzgc-web/freefi-android/compare/v6.0.1...v6.0.2)
+
+### Fixes
+
+* **server:** сборка без каталога `server-control` больше не падает - быстрый
+  старт и деплой скрипта возвращают понятную ошибку вместо `FileNotFoundException`
+
+## [6.0.1](https://github.com/zussuzgc-web/freefi-android/compare/v6.0.0...v6.0.1)
+
+Первый публичный релиз приложения (open-source сборка без скриптов управления).
+
 ## [4.3.0](https://github.com/samosvalishe/turn-proxy-android/compare/v4.2.0...v4.3.0) (2026-08-25)
 
 
