@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Чистый HTTP разрешён любому гостевому серверу: statusd-порт (listen+1)
+     живёт по произвольному IP клиента, и перечислить его в domain-config
+     нельзя. HTTPS при этом не ослабляется. Без этого живой срок подписки
+     не обновлялся: StatusdClient тихо отваливался на CleartextNotPermitted. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

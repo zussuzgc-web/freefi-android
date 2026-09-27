@@ -1,0 +1,70 @@
+package com.freeturn.app.domain.proxy
+
+import com.freeturn.app.data.AppPreferences
+import com.freeturn.app.data.config.HostPort
+import com.freeturn.app.domain.ServerState
+import com.freeturn.app.domain.ssh.SshRepository
+import com.freeturn.app.domain.server.resolveRestartEndpoints
+import kotlinx.coroutines.flow.first
+
+class ProxyOrchestrator(
+    private val prefs: AppPreferences,
+    private val launcher: ProxyServiceLauncher,
+    private val sshRepository: SshRepository
+) {
+    /**
+     * @param preferListen/preferConnect приходят после явного apply (правка конфига
+     * активного сервера) и перекрывают всё; иначе - живые значения из probe, чтобы
+     * случайный рестарт не перезаписал рабочий конфиг дефолтной парой.
+     */
+    suspend fun restartServerIfRunning(
+        preferListen: String? = null,
+        preferConnect: String? = null
+    ) {
+        val active = sshRepository.activeSshConfig
+        if (active == null) {
+            sshRepository.logNote("рестарт сервера пропущен: нет активной SSH-сессии")
+            return
+        }
+        // Сессия должна вести на хост активного профиля: после смены профиля она ещё
+        // может указывать на прошлый сервер - иначе рестартнём чужой хост.
+        val cfg = prefs.sshConfigFlow.first()
+        if (active.ip != cfg.ip || active.port != cfg.port) {
+            sshRepository.logNote("рестарт сервера пропущен: SSH-сессия указывает на другой хост")
+            return
+        }
+        val state = sshRepository.serverState.value
+        val known = state as? ServerState.Known
+        if (known?.running != true) {
+            val reason = if (known != null) "сервер остановлен"
+                else "состояние сервера ${state::class.simpleName}"
+            sshRepository.logNote("рестарт сервера пропущен: $reason")
+            return
+        }
+        val l0 = prefs.proxyListenFlow.first()
+        val c0 = prefs.proxyConnectFlow.first()
+        val (l, c) = resolveRestartEndpoints(preferListen, preferConnect, known, l0, c0)
+        if (!HostPort.isValid(l) || !HostPort.isValid(c)) {
+            sshRepository.logNote("рестарт сервера пропущен: некорректный listen/connect ($l -> $c)")
+            return
+        }
+        val opts = prefs.serverOptsFlow.first()
+        sshRepository.stopServer()
+        sshRepository.startServer(
+            listen = l, connect = c,
+            proxyMode = opts.proxyMode,
+            kcp = opts.kcp,
+            obfProfile = if (opts.obfEnabled) opts.obfProfile else "none",
+            obfKey = if (opts.obfEnabled) opts.obfKey else "",
+            obfTimingMs = opts.obfTimingMs,
+            clientId = prefs.ownClientId()
+        )
+    }
+
+    /** Команда START при живой сессии пересоздаёт её с новым конфигом. */
+    fun restartProxyIfRunning() {
+        if (!ProxyStore.status.value.busy) return
+        launcher.start()
+    }
+
+}

@@ -1,0 +1,599 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Приложение -->
+    <string name="app_name">FreeFi</string>
+
+    <!-- HomeScreen -->
+    <string name="nav_home">Главная</string>
+    <string name="turn_proxy_title">FreeFi</string>
+    <string name="proxy_active">Прокси активен</string>
+    <string name="tunnel_active">Туннель активен</string>
+    <string name="proxy_connecting">Подключение…</string>
+    <string name="proxy_press_to_start">Нажмите для запуска</string>
+    <string name="home_empty_title">Нет серверов</string>
+    <string name="home_empty_desc">Добавьте сервер, чтобы запустить прокси</string>
+    <string name="home_add_server">Добавить сервер</string>
+
+    <!-- ShareScreen -->
+    <string name="nav_share">Поделиться</string>
+    <string name="share_title">Поделиться</string>
+    <string name="share_tab_connection">Соединение</string>
+    <string name="share_tab_users">Пользователи</string>
+    <string name="share_connection_desc">Предоставление доступа к VPN без прав управления сервером</string>
+    <string name="share_user_name_label">Имя пользователя</string>
+    <string name="share_client_id_label">Client ID</string>
+    <string name="share_client_id_hint">Нужен серверу, чтобы принять подключение (32 hex-символа)</string>
+    <string name="share_client_id_invalid">Неверный формат: 32 hex-символа (0-9, a-f)</string>
+    <string name="share_server_label">Сервер</string>
+    <string name="share_server_none">Выберите сервер</string>
+    <string name="share_create_button">Поделиться</string>
+    <string name="share_info_loading">Проверка сервера…</string>
+    <string name="share_info_error">Сервер недоступен</string>
+    <string name="share_info_retry">Повторить</string>
+    <string name="share_protocol_wg">WireGuard</string>
+    <string name="share_protocol_wg_desc">Пользователь подключается по WireGuard</string>
+    <string name="share_protocol_proxy">Прокси</string>
+    <string name="share_protocol_proxy_desc">Пользователь подключается через прокси</string>
+    <string name="share_chip_obf">Обфускация</string>
+    <string name="share_access_type">Тип доступа</string>
+    <string name="share_empty_title">Нет серверов для шаринга</string>
+    <string name="share_empty_desc">Добавьте сервер, чтобы поделиться подключением</string>
+    <string name="share_empty_add">Добавить сервер</string>
+    <string name="share_users_section">Пользователи</string>
+    <string name="share_users_refresh">Обновить список</string>
+    <string name="share_users_empty">Список пользователей пуст</string>
+    <string name="share_peer_self">Это устройство</string>
+    <string name="share_client_proxy_access">Прокси-доступ</string>
+    <string name="share_peer_unnamed">Без имени</string>
+    <string name="share_peer_seen">был в сети %1$s</string>
+    <string name="share_peer_never_seen">не подключался</string>
+    <string name="share_peer_expires">до %1$s</string>
+    <string name="share_peer_expired">срок истёк</string>
+    <string name="share_peer_actions">Действия</string>
+    <string name="share_peer_reshare">Показать ссылку</string>
+    <string name="share_peer_revoke">Отозвать доступ</string>
+    <string name="share_peer_consumed">ссылка использована</string>
+    <string name="share_client_imported">Импортирован</string>
+    <string name="share_imported_server_hint">Этот сервер добавлен по share-ссылке. Создание новых ссылок невозможно — ссылка одноразовая.</string>
+    <string name="share_result_title">Доступ для \"%1$s\"</string>
+    <string name="share_result_desc">Передавайте ссылку или QR-код только доверенным лицам. При изменении ключа обфускации потребуется выпустить новую ссылку.</string>
+    <string name="share_result_qr">QR-код с ссылкой на доступ</string>
+    <string name="share_result_copy">Копировать</string>
+    <string name="share_result_share">Поделиться</string>
+    <string name="share_revoke_title">Отозвать доступ?</string>
+    <string name="share_revoke_desc">Пользователь \"%1$s\" будет удалён с сервера, его подключение перестанет работать. Действие необратимо.</string>
+    <string name="share_revoke_confirm">Отозвать</string>
+    <string name="share_include_vk_link">Вложить ссылку на звонок</string>
+    <string name="share_include_vk_link_desc">Получателю не нужен свой аккаунт</string>
+    <string name="share_no_address">У сервера не указан адрес - добавьте его в настройках сервера</string>
+    <string name="error_ssh_generic">Ошибка SSH</string>
+
+    <!-- Импорт по ссылке (ImportSheet) -->
+    <string name="import_title">Импорт подключения</string>
+    <string name="import_default_name">Импортированный сервер</string>
+    <string name="import_vk_link_label">Ссылка на звонок VK</string>
+    <string name="import_vk_link_helper">Укажите ссылку на звонок VK для установки соединения</string>
+    <string name="import_vk_link_from_owner">Ссылка пришла вместе с доступом - можно заменить своей</string>
+    <string name="import_duplicate_address">Сервер с данным адресом уже существует</string>
+    <string name="import_duplicate_owner">Это адрес одного из ваших серверов. Новая запись не добавлена: повторная запись создала бы дубль доступа.</string>
+    <string name="import_understood">Понятно</string>
+    <string name="import_duplicate_conf">Конфигурация уже импортирована</string>
+    <string name="import_confirm">Импортировать</string>
+    <string name="import_success_title">Сервер добавлен</string>
+    <string name="import_success_desc">Настройка завершена. Запустите подключение на главном экране.</string>
+    <string name="import_success_go_home">К подключению</string>
+    <string name="import_error_title">Ошибка импорта</string>
+    <string name="import_error_desc">Некорректная ссылка или неподдерживаемая версия приложения.</string>
+    <string name="import_error_ok">Понятно</string>
+    <string name="import_save_error">Не удалось сохранить сервер. Попробуйте ещё раз.</string>
+
+    <!-- QR-сканер -->
+    <string name="scanner_title">Сканировать QR-код</string>
+    <string name="scanner_hint">Наведите камеру на QR-код</string>
+    <string name="scanner_permission_rationale">Для сканирования QR-кодов требуется доступ к камере</string>
+    <string name="scanner_permission_grant">Разрешить доступ</string>
+    <string name="scanner_permission_open_settings">Открыть настройки</string>
+    <string name="scanner_permission_denied">Доступ к камере запрещён</string>
+
+    <!-- AddServerScreen -->
+    <string name="nav_add">Добавить</string>
+    <string name="add_server_title">Соединение</string>
+    <string name="add_paste_hint">Вставьте ссылку</string>
+    <string name="add_paste_button">Вставить</string>
+    <string name="add_paste_not_link">В буфере обмена нет ссылки freeturn://</string>
+    <string name="add_methods_section">Другие способы подключения</string>
+    <string name="add_self_hosted_title">Свой сервер</string>
+    <string name="add_self_hosted_desc">Самостоятельная настройка подключения к серверу</string>
+    <string name="add_manual_title">Ручная настройка</string>
+    <string name="add_manual_desc">Ввести параметры вручную</string>
+    <string name="add_manual_create">Создать</string>
+    <string name="add_restore_title">Восстановление</string>
+    <string name="add_restore_desc">Загрузить резервную копию</string>
+    <string name="add_from_qr_title">QR-код</string>
+    <string name="add_from_qr_desc">Отсканировать код с экрана</string>
+    <string name="add_soon_badge">Скоро</string>
+    <string name="add_default_server_name">Новый сервер</string>
+
+    <!-- Мастер self-hosted сервера (ServerSetupScreen) -->
+    <string name="setup_step_counter">Шаг %1$d из %2$d</string>
+    <string name="setup_config_title">Параметры сервера</string>
+    <string name="setup_install_title">Установка</string>
+    <string name="setup_done_title">Сервер готов</string>
+    <string name="setup_continue">Продолжить</string>
+    <string name="setup_install_btn">Установить</string>
+    <string name="setup_go_home">На главную</string>
+    <string name="setup_checking_ssh">Проверка подключения…</string>
+    <string name="setup_checking_ssh_desc">Проверка окружения сервера</string>
+    <string name="setup_mode_section">Режим работы</string>
+    <string name="setup_mode_vpn_desc">Поднимем WireGuard на сервере - весь трафик устройства пойдёт через туннель.</string>
+    <string name="setup_mode_proxy_desc">Прокси перенаправляет трафик на ваш бэкенд на сервере: WireGuard или Xray.</string>
+    <string name="setup_wg_found">WireGuard найден</string>
+    <string name="setup_wg_found_desc">Порт %1$d станет бэкендом. Для этого устройства добавится отдельный пир - конфиг подставится сам.</string>
+    <string name="setup_wg_missing">WireGuard не найден</string>
+    <string name="setup_wg_missing_desc">Установим и настроим автоматически - клиентский конфиг подставится сам.</string>
+    <string name="setup_wg_port_label">Порт WireGuard</string>
+    <string name="setup_wg_source_auto">Автоматически</string>
+    <string name="setup_wg_source_custom">Свой конфиг</string>
+    <string name="setup_wg_custom_desc">WireGuard на сервере не настраивается - укажите порт и вставьте свой клиентский .conf.</string>
+    <string name="setup_wg_conf_label">Клиентский конфиг (.conf)</string>
+    <string name="setup_wg_conf_placeholder">[Interface]\n…</string>
+    <string name="setup_port_roll">Сгенерировать порт</string>
+    <string name="setup_backend_port_label">Порт бэкенда</string>
+    <string name="setup_backend_port_desc">Локальный порт вашего VPN/бэкенда на сервере (127.0.0.1)</string>
+    <string name="setup_backend_protocol_label">Протокол бэкенда</string>
+    <string name="setup_backend_protocol_desc">UDP - WireGuard/AmneziaWG, TCP - Xray</string>
+    <string name="setup_turn_section">TURN-прокси</string>
+    <string name="setup_listen_port_desc">Внешний UDP-порт сервера, случайный из диапазона 56000–56999</string>
+    <string name="setup_obf_hint_rtpopus">Трафик маскируется под голосовой звонок. Ключ сгенерируется и подставится автоматически.</string>
+    <string name="setup_obf_hint_none">Без маскировки трафика. Можно включить позже в настройках сервера.</string>
+    <string name="setup_call_link_hint">Можно заполнить позже в настройках подключения</string>
+    <string name="setup_task_install">Установка ядра</string>
+    <string name="setup_task_wireguard">Настройка WireGuard</string>
+    <string name="setup_task_start">Запуск сервера</string>
+    <string name="setup_task_persist">Сохранение конфигурации</string>
+    <string name="setup_retry">Повторить</string>
+    <string name="setup_back_to_config">К настройкам</string>
+    <string name="setup_done_hero">Сервер настроен и запущен</string>
+    <string name="setup_done_active_hint">Сервер добавлен и сделан активным - запускайте с главного экрана.</string>
+    <string name="setup_done_wg_imported">WireGuard-конфиг получен с сервера и подключён.</string>
+    <string name="setup_done_wg_manual">Используется существующий WireGuard - импортируйте свой клиентский .conf в \"Режиме подключения\".</string>
+    <string name="setup_summary_address">Адрес</string>
+    <string name="setup_summary_mode">Режим</string>
+    <string name="setup_summary_obf">Обфускация</string>
+    <string name="setup_obf_off">Выключена</string>
+    <string name="setup_abort_title">Прервать установку?</string>
+    <string name="setup_abort_text">Установка прервётся. Выполненные шаги сохранятся, повторный запуск безопасен.</string>
+    <string name="setup_abort_confirm">Прервать</string>
+    <string name="setup_abort_stay">Остаться</string>
+    <string name="setup_field_required">Обязательное поле</string>
+    <string name="setup_port_invalid">Порт от 1 до 65535</string>
+    <string name="setup_ports_clash">Совпадает с портом бэкенда</string>
+    <string name="setup_duplicate_host">Сервер с этим адресом уже есть в списке - добавится ещё одна запись.</string>
+    <string name="setup_name_hint">Если не заполнять, назовем \"Новый сервер\".</string>
+    <string name="setup_summary_name">Название</string>
+    <string name="setup_task_state_done">Выполнено</string>
+    <string name="setup_task_state_active">Выполняется</string>
+    <string name="setup_task_state_failed">Ошибка</string>
+    <string name="setup_task_state_pending">В ожидании</string>
+    <string name="proxy_captcha_required">Требуется прохождение капчи</string>
+    <string name="tcp">TCP</string>
+    <string name="udp">UDP</string>
+    <string name="ssh_connecting">SSH: сопряжение…</string>
+    <string name="reconnect">Повторить сопряжение</string>
+    <string name="server_connection_lost_title">Нет подключения к серверу</string>
+    <string name="server_connection_lost_desc">SSH-сессия не активна. Повторите сопряжение, чтобы управлять сервером.</string>
+    <string name="proxy_active_stop">Прокси активен - нажмите для остановки</string>
+    <string name="tunnel_active_stop">Туннель активен - нажмите для остановки</string>
+    <string name="proxy_error_restart">Ошибка - нажмите для повторного запуска</string>
+    <string name="start_proxy">Запустить прокси</string>
+    <string name="android_client">Android-клиент</string>
+    <string name="proxy_core">Прокси-ядро</string>
+    <string name="reset_settings">Сбросить настройки</string>
+    <string name="reset">Сбросить</string>
+    <string name="reset_all_settings_title">Сбросить все настройки?</string>
+    <string name="reset_all_settings_desc">Все настройки будут удалены, прокси остановлен. Приложение перезапустится.</string>
+    <string name="cancel">Отмена</string>
+
+    <!-- ClientSetupScreen -->
+    <string name="connection_title">Подключение</string>
+    <string name="server_address_label">Адрес turn-proxy сервера</string>
+    <string name="server_address_placeholder">1.2.3.4:56000</string>
+    <string name="server_address_support">IP и порт turn-proxy на вашем VPS</string>
+    <string name="call_link_label">Ссылка на звонок</string>
+    <string name="call_link_placeholder">https://site.ru/call/…</string>
+    <string name="call_link_support">Звонки -> Создать -> Скопировать ссылку (не нажимайте \"Завершить\")</string>
+    <string name="call_link_edit">Изменить ссылку на звонок</string>
+    <string name="call_link_empty_error">Введите ссылку на звонок</string>
+    <string name="paste">Вставить</string>
+    <string name="local_listen_address">Локальный адрес прослушивания</string>
+    <string name="local_listen_placeholder">127.0.0.1:9000</string>
+    <string name="local_listen_support">Адрес, на котором клиент принимает трафик от WireGuard/XRay</string>
+    <string name="client_section_performance">Производительность</string>
+    <string name="client_section_dns">DNS</string>
+    <string name="client_section_advanced">Дополнительно</string>
+    <string name="threads_format">Потоки: %1$d</string>
+    <string name="threads_recommendation">Рекомендуется 8–12</string>
+    <string name="streams_per_cred_recommendation">Сколько TURN-потоков обслуживает один VK-аккаунт</string>
+    <string name="streams_per_cred_format">Потоков на аккаунт: %1$d</string>
+
+    <string name="tcp_forward_mode">Режим</string>
+    <string name="tcp_blocked_by_tunnel">Туннель работает только поверх UDP-проброса</string>
+    <string name="obf_profile_title">Обфускация</string>
+    <string name="obf_timing_off">Пейсинг: выкл</string>
+    <string name="obf_timing_format">Пейсинг: %1$d мс</string>
+    <string name="obf_timing_hint">Пауза между пакетами на обеих сторонах. 20 мс - как у голосового звонка; чем больше, тем ниже потолок скорости.</string>
+    <string name="obf_none">Выкл</string>
+    <string name="obf_rtpopus">rtpopus</string>
+    <string name="obf_rtpopus2">rtpopus2</string>
+    <string name="obf_rtpopus3">rtpopus3</string>
+    <string name="provider_vk">VK Calls</string>
+    <string name="obf_key_empty_hint">Пусто - ключ сгенерируется при применении</string>
+    <string name="obf_key_invalid_hint">Неверный формат - нужны 64 hex-символа</string>
+    <string name="server_sync_section">Синхронные настройки сервера</string>
+    <string name="sync_server_switches">Синхронизировать с сервером</string>
+    <string name="sync_off_banner">Синхронизация с сервером отключена. Проверяйте настройки вручную.</string>
+    <string name="transport_protocol">Транспорт</string>
+    <string name="transport_protocol_desc">UDP снижает задержки, TCP - стабильнее</string>
+    <string name="manual_captcha">Ручной ввод капчи</string>
+    <string name="manual_captcha_desc">Решать капчу вручную вместо автоматического распознавания</string>
+    <string name="use_carrier_dns">DNS оператора связи</string>
+    <string name="use_carrier_dns_desc">Использовать DNS текущей сети вместо системного резолвера</string>
+    <string name="use_carrier_dns_overridden">Отключено: действует ручной DNS-список выше</string>
+    <string name="dns_mode_title">DNS-резолвер</string>
+    <string name="dns_mode_desc">Авто - пробует системный DNS, переключается на DNS-over-HTTPS при блокировке</string>
+    <string name="dns_mode_auto">Авто</string>
+    <string name="dns_mode_udp">UDP/53</string>
+    <string name="dns_mode_doh">DoH</string>
+    <string name="dns_custom_label">DNS-серверы (вручную)</string>
+    <string name="dns_custom_hint">Через запятую/пробел. Приоритет над DNS оператора. Пусто - не задавать.</string>
+    <string name="dns_custom_invalid">Некорректные DNS-адреса будут пропущены.</string>
+
+    <string name="obf_select_profile_hint">Выберите профиль обфускации, чтобы задать ключ.</string>
+
+    <!-- LogsScreen -->
+    <string name="logs_title">Логи</string>
+    <string name="copy">Копировать</string>
+    <string name="clear">Очистить</string>
+    <string name="no_logs">Нет логов</string>
+
+    <!-- ServerManagementScreen -->
+    <string name="server_config">Конфигурация сервера</string>
+    <string name="listen_port">Порт прослушивания</string>
+    <string name="listen_port_placeholder">56000</string>
+    <string name="listen_port_desc">Порт, на котором сервер принимает подключения от клиентов</string>
+    <string name="listen_ip">IP прослушивания</string>
+    <string name="listen_ip_placeholder">0.0.0.0</string>
+    <string name="listen_ip_desc">IP-адрес, который прослушивает сервер. 0.0.0.0 - все интерфейсы. Укажите конкретный WAN IP, если на хосте несколько адресов.</string>
+    <string name="turn_client_address">Адрес TURN-клиента</string>
+    <string name="turn_client_placeholder">127.0.0.1:40537</string>
+    <string name="turn_client_desc">Локальный WireGuard/Xray-бэкенд на стороне сервера</string>
+    <string name="server_install">Установить</string>
+    <string name="server_update">Обновить</string>
+    <string name="server_obf_key_label">Obf-ключ (64 hex)</string>
+    <string name="obf_key_regen">Сгенерировать новый ключ</string>
+    <string name="start_server">Запустить сервер</string>
+    <string name="stop_server">Остановить сервер</string>
+    <string name="ssh_log_title">SSH-лог</string>
+    <string name="ssh_log_fetch_journal">Журнал сервера</string>
+    <string name="ssh_log_empty">Лог пуст</string>
+
+    <!-- SshSetupScreen -->
+    <string name="show_password">Показать пароль</string>
+    <string name="hide_password">Скрыть пароль</string>
+    <string name="connect_to_server">Сопряжение</string>
+    <string name="back">Назад</string>
+    <string name="server_data">Данные сервера</string>
+    <string name="server_ip_label">IP-адрес сервера</string>
+    <string name="server_ip_placeholder">1.2.3.4</string>
+    <string name="ssh_port">SSH порт</string>
+    <string name="username">Имя пользователя</string>
+    <string name="password">Пароль</string>
+    <string name="private_key">Приватный ключ</string>
+    <string name="authentication">Аутентификация</string>
+    <string name="auth_method_label">Способ входа</string>
+    <string name="private_key_pem">Приватный ключ (PEM)</string>
+    <string name="private_key_placeholder">-----BEGIN RSA PRIVATE KEY-----\n…</string>
+    <string name="sudo_password">Пароль sudo</string>
+    <string name="sudo_password_hint">Требуется, если вход выполняется не под root и sudo запрашивает пароль. Иначе оставьте поле пустым.</string>
+    <string name="connect_btn">Подключиться</string>
+    <string name="step_connecting">Сопряжение с сервером…</string>
+    <string name="step_auth">Аутентификация…</string>
+    <string name="step_ssh_check">Проверка SSH…</string>
+
+    <!-- Update -->
+    <string name="update_title">Обновление</string>
+    <string name="update_check">Проверить</string>
+    <string name="update_checking">Проверка…</string>
+    <string name="update_available_title">Доступно обновление</string>
+    <string name="update_available">Доступна версия %1$s</string>
+    <string name="update_download">Скачать</string>
+    <string name="update_downloading_title">Загрузка обновления</string>
+    <string name="update_downloading">Загрузка: %1$d%%</string>
+    <string name="update_ready_title">Обновление загружено</string>
+    <string name="update_ready_desc">APK готов к установке. Установить сейчас?</string>
+    <string name="update_ready_desc_short">Готово к установке</string>
+    <string name="update_install">Установить</string>
+    <string name="update_no_update">Установлена последняя версия</string>
+    <string name="update_error">Ошибка: %1$s</string>
+
+    <string name="debug_mode">Подробное логирование</string>
+    <string name="debug_mode_desc">Детальный вывод ядра</string>
+    <string name="magic_switch">Альтернативный TURN-узел</string>
+    <string name="magic_switch_desc">Указанный TURN-сервер вместо автоподбора</string>
+    <string name="magic_switch_address_label">Адрес TURN-узла</string>
+    <string name="magic_switch_address_placeholder">255.255.255.255</string>
+    <string name="magic_switch_address_support">IP или хост альтернативного TURN-сервера</string>
+
+    <string name="dynamic_theme_title">Динамическая тема</string>
+    <string name="dynamic_theme_desc">Использовать системные цвета (Material You)</string>
+    <string name="accent_color_title">Цвет приложения</string>
+    <string name="accent_color_desc">Выберите свой цвет на круге Иттена</string>
+    <string name="accent_color_dialog_title">Цвет приложения</string>
+    <string name="background_color_title">Цвет фона</string>
+    <string name="background_color_desc">Выберите цвет фона на круге Иттена</string>
+    <string name="background_color_dialog_title">Цвет фона</string>
+    <string name="accent_color_saturation">Насыщенность</string>
+    <string name="accent_color_brightness">Яркость</string>
+    <string name="accent_color_apply">Применить</string>
+    <string name="accent_color_cancel">Отмена</string>
+    <string name="accent_color_standard">Стандартный</string>
+    <string name="privacy_mode_title">Приватный режим</string>
+    <string name="privacy_mode_desc">Скрывает IP и порты</string>
+    <string name="seasonal_decor_title">Сезонный декор</string>
+    <string name="seasonal_decor_desc">Листва и свечение вокруг кнопки подключения</string>
+
+    <!-- Notifications -->
+    <string name="notif_proxy_title">FreeFi</string>
+    <string name="notif_proxy_connecting">Подключение…</string>
+    <string name="notif_channel_proxy">Прокси</string>
+    <string name="notif_channel_captcha">Капча</string>
+    <string name="notif_captcha_title">Требуется прохождение капчи</string>
+    <string name="notif_captcha_text">Откройте приложение для проверки</string>
+    <string name="notif_proxy_connect_error">Ошибка подключения</string>
+    <string name="notif_proxy_wireguard_error">Ошибка WireGuard</string>
+    <string name="notif_proxy_vpn_permission">Нужно разрешение VPN - откройте приложение</string>
+    <string name="notif_proxy_vpn_denied">Разрешение VPN не выдано - прокси не запущен</string>
+
+    <!-- CaptchaWebViewDialog -->
+    <string name="captcha_title">Проверка VK</string>
+    <string name="captcha_subtitle">Пройдите проверку для продолжения</string>
+    <string name="captcha_close">Закрыть</string>
+    <string name="captcha_browser_hint">Капча открыта во внешнем браузере. После прохождения вернитесь в приложение.</string>
+    <string name="captcha_open_browser">Открыть в браузере</string>
+
+    <!-- Telegram -->
+    <string name="tg_channel">Telegram-канал</string>
+    <string name="tg_subscribe_title">Следите за обновлениями</string>
+    <string name="tg_subscribe_desc">Подпишитесь на Telegram-канал, чтобы первыми узнавать о новых версиях.</string>
+    <string name="tg_subscribe_btn">Подписаться</string>
+    <string name="tg_not_now">Не сейчас</string>
+
+    <!-- Servers -->
+    <string name="server_delete">Удалить</string>
+    <string name="server_unsaved_label">Не сохранено</string>
+
+    <!-- Notification & Tile -->
+    <string name="notif_proxy_stop_action">Отключить</string>
+    <string name="notif_proxy_threads_format">Потоки: %1$d/%2$d</string>
+    <string name="tile_service_label">FreeFi</string>
+
+    <!-- Виджет домашнего экрана -->
+    <string name="widget_label">FreeFi - прокси</string>
+    <string name="widget_status_on">Подключено</string>
+    <string name="widget_status_connecting">Подключение…</string>
+    <string name="widget_status_off">Отключено</string>
+    <string name="widget_server_none">Нет активного сервера</string>
+    <string name="widget_action_start">Запустить</string>
+    <string name="widget_action_stop">Остановить</string>
+
+    <!-- App Shortcuts (long-press иконки) -->
+    <string name="shortcut_start_short">Запуск</string>
+    <string name="shortcut_start_long">Запустить прокси</string>
+    <string name="shortcut_stop_short">Стоп</string>
+    <string name="shortcut_stop_long">Остановить прокси</string>
+
+    <!-- Туннельное приложение (WireGuard) -->
+    <string name="wireguard_tunnel_name">Имя туннеля</string>
+
+    <!-- Split tunneling -->
+    <string name="split_tunnel_title">Раздельное туннелирование</string>
+    <string name="split_tunnel_mode_label">Режим</string>
+    <string name="split_tunnel_mode_include">Только приложения из списка работают через VPN</string>
+    <string name="split_tunnel_mode_exclude">Приложения из списка не работают через VPN</string>
+    <string name="split_tunnel_search">Поиск приложений</string>
+    <string name="split_tunnel_empty">Приложения не найдены</string>
+    <string name="split_tunnel_off_hint">Включите, чтобы выбрать приложения</string>
+    <string name="split_tunnel_locked">Остановите подключение, чтобы изменить раздельное туннелирование</string>
+    <string name="split_tunnel_status_off">Раздельное туннелирование выключено</string>
+    <string name="split_tunnel_status_on">Раздельное туннелирование включено</string>
+
+    <!-- Servers sheet -->
+    <string name="servers_sheet_title">Серверы</string>
+
+    <!-- Логи -->
+    <string name="logs_enabled">Показывать логи</string>
+    <string name="logs_enabled_desc">Вывод ядра и кнопка логов на главном экране</string>
+
+    <!-- Продвинутые / отладка -->
+    <string name="settings_advanced">Продвинутые</string>
+    <string name="settings_advanced_desc">Отладка и диагностика</string>
+    <string name="nerd_mode">Режим отладки</string>
+    <string name="nerd_mode_desc">Открывает отладочную информацию: состояние ядра, журнал сервера и подробные логи</string>
+    <string name="hotspot_proxy">SOCKS5 Hotspot</string>
+    <string name="hotspot_proxy_desc">Слушать на 0.0.0.0:1080 для раздачи WireGuard-туннеля через точку доступа</string>
+    <string name="nerd_section_title">Отладочная информация</string>
+    <string name="nerd_section_desc">Состояние ядра, журнал сервера и SSH-лог</string>
+    <string name="nerd_core_state">Состояние ядра</string>
+    <string name="nerd_state_label">Состояние</string>
+    <string name="nerd_state_running">Работает</string>
+    <string name="nerd_state_stopped">Остановлен</string>
+    <string name="nerd_state_not_installed">Не установлено</string>
+    <string name="nerd_version_label">Версия</string>
+    <string name="nerd_launch_params">Параметры запуска</string>
+    <string name="nerd_launch_server">Сервер</string>
+    <string name="nerd_launch_client">Клиент</string>
+    <string name="open_logs">Открыть логи</string>
+    <string name="nav_logs">Логи</string>
+    <string name="logs_actions">Действия с логами</string>
+    <string name="logs_share_file">Отправить файл</string>
+    <string name="logs_share_empty">Файл лога пуст</string>
+
+    <!-- Настройки (новый раздел) -->
+    <string name="nav_settings">Настройки</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_servers">Серверы</string>
+    <string name="settings_servers_desc">Управление добавленными серверами и их настройками</string>
+    <string name="settings_empty_servers">Нет добавленных серверов</string>
+    <string name="provider_vk_calls">VK Звонки</string>
+    <string name="server_delete_confirm_title">Удалить сервер?</string>
+    <string name="server_delete_confirm_desc">Сервер \"%1$s\" и все его настройки будут удалены из приложения.</string>
+    <!-- Раздел "Управление" в хабе сервера -->
+    <string name="server_management">Управление</string>
+    <string name="server_clean_title">Удалить FreeFi с сервера</string>
+    <string name="server_clean_subtitle">Удалить с удалённого сервера службу, WireGuard и список пользователей</string>
+    <string name="server_delete_app">Удалить сервер из приложения</string>
+    <string name="server_delete_app_subtitle">Удаляется только запись в приложении - сервер не изменится</string>
+    <!-- Диалог очистки сервера от Freefy -->
+    <string name="server_clean_confirm_title">Удалить FreeFi с сервера?</string>
+    <string name="server_clean_confirm_desc">С сервера будут удалены все компоненты FreeFi. Пользователи, с которыми вы поделились доступом, потеряют подключение.</string>
+    <string name="server_clean_confirm_btn">Удалить</string>
+    <string name="server_delete_retry">Повторить</string>
+    <string name="server_delete_cleaning_title">Удаление с сервера</string>
+    <string name="server_delete_cleaning_desc">Удаление компонентов FreeFi с сервера по SSH…</string>
+    <string name="server_delete_done_title">Сервер очищен</string>
+    <string name="server_delete_done_desc">Компоненты FreeFi удалены с сервера.</string>
+    <string name="server_delete_done_confirm">Готово</string>
+    <string name="cleanup_removed_label">Удалено с сервера:</string>
+    <string name="cleanup_kept_label">Оставлено без изменений:</string>
+    <string name="cleanup_nothing">Компоненты FreeFi на сервере не найдены - удалять нечего.</string>
+    <string name="cleanup_item_binary">Исполняемый файл freefy-proxy</string>
+    <string name="cleanup_item_service">Служба systemd</string>
+    <string name="cleanup_item_wg">Интерфейс WireGuard (ft-wg0)</string>
+    <string name="cleanup_item_wg_pkg">Пакет wireguard-tools</string>
+    <string name="cleanup_item_firewall">Правило файрвола (ufw)</string>
+    <string name="cleanup_item_files">Рабочие файлы и список пользователей</string>
+    <string name="cleanup_kept_foreign_wg">Интерфейс ft-wg0 (создан не приложением)</string>
+    <string name="cleanup_kept_wg_tools">Пакет wireguard-tools (установлен не приложением)</string>
+    <string name="cleanup_kept_ip_forward">Системная настройка ip_forward</string>
+    <string name="provider_connection_settings">Настройки подключения</string>
+    <string name="provider_connection_settings_desc">Параметры клиента: адрес, потоки, DNS</string>
+    <string name="provider_server_settings">Настройки сервера</string>
+    <string name="provider_server_settings_desc">Состояние, обфускация, проброс и управление ядром</string>
+    <!-- Живой статус сервера в хабе -->
+    <string name="hub_server_running">Сервер работает</string>
+    <string name="hub_server_stopped">Сервер остановлен</string>
+    <string name="hub_connect_failed">Не удалось подключиться</string>
+    <string name="hub_not_installed">Ядро не установлено</string>
+    <string name="hub_sync_off">Синхронизация выключена</string>
+    <!-- Заголовки фаз статуса (hero) -->
+    <string name="pill_connecting">Подключение…</string>
+    <string name="pill_not_paired">SSH не настроен</string>
+    <string name="pill_offline">Сервер неактивен</string>
+    <string name="not_paired_hint">У сервера нет SSH-сопряжения: управление им из приложения недоступно, клиентские настройки работают.</string>
+    <string name="server_apply">Применить</string>
+    <string name="apply_blocked_arq">Исправьте значения ARQ</string>
+    <string name="apply_blocked_address">Проверьте адреса прослушивания и бэкенда</string>
+    <string name="apply_blocked_key">Проверьте obf-ключ</string>
+    <string name="apply_blocked_busy">Дождитесь операции на сервере</string>
+    <string name="server_inactive_title">Сервер не активен</string>
+    <string name="server_inactive_desc">Чтобы управлять ядром и SSH-подключением, сделайте этот сервер активным.</string>
+    <string name="make_active">Сделать активным</string>
+    <string name="server_active_badge">Активный</string>
+    <string name="server_has_ssh">SSH</string>
+    <string name="ping_check">Проверить пинг</string>
+    <string name="ping_checking">Проверка…</string>
+    <string name="ping_ms">%1$d мс</string>
+    <string name="ping_fail">нет ответа</string>
+    <string name="server_actions">Действия с сервером</string>
+    <string name="menu_delete_server">Удалить сервер</string>
+    <string name="menu_rename_server">Переименовать</string>
+    <string name="menu_clone_server">Клонировать</string>
+    <string name="rename_server_title">Переименовать сервер</string>
+    <string name="server_name_label">Имя сервера</string>
+    <string name="save">Сохранить</string>
+    <string name="connection_mode_title">Режим подключения</string>
+    <string name="provider_connection_mode_desc">Proxy или VPN (WireGuard), импорт конфига</string>
+    <string name="mode_proxy">Прокси</string>
+    <string name="mode_vpn">VPN</string>
+    <string name="mode_proxy_desc">Трафик идёт через локальный прокси, без туннеля.</string>
+    <string name="mode_vpn_desc">Весь трафик устройства туннелируется через WireGuard.</string>
+    <string name="forward_section">Проброс</string>
+    <string name="forward_udp_desc">UDP-релей: локальный порт принимает трафик WireGuard/AmneziaWG.</string>
+    <string name="forward_tcp_desc">TCP-форвардер: локальный порт слушает Xray или sing-box, свой туннель не поднимается.</string>
+    <string name="forward_tcp_foreign_vpn">Если VPN на устройстве держит другое приложение, исключите FreeFi из его туннеля - иначе трафик зациклится.</string>
+    <string name="forward_server_match">Сервер должен быть запущен в том же режиме, иначе он отклонит сессию.</string>
+
+    <string name="kcp_section">Профиль ARQ</string>
+    <string name="kcp_preset_label">Профиль</string>
+    <string name="kcp_preset_standard">Стандарт</string>
+    <string name="kcp_preset_mobile">Мобильный</string>
+    <string name="kcp_preset_custom">Свои</string>
+    <string name="kcp_preset_standard_desc">Дефолт ядра: минимальная задержка, больше служебного трафика.</string>
+    <string name="kcp_preset_mobile_desc">Щадящий для сотовой сети: реже опрос, окна меньше, ACK пачками.</string>
+    <string name="kcp_preset_custom_desc">Значения задаются вручную; применяются к клиенту и к серверу.</string>
+    <string name="kcp_interval_label">Интервал цикла, мс</string>
+    <string name="kcp_resend_label">Быстрый ресенд, дублей ACK</string>
+    <string name="kcp_sndwnd_label">Окно отправки, пакетов</string>
+    <string name="kcp_rcvwnd_label">Окно приёма, пакетов</string>
+    <string name="kcp_mtu_label">MTU сегмента, байт</string>
+    <string name="kcp_mtu_support">Допустимо 300–1350</string>
+    <string name="kcp_nodelay_title">Быстрый режим</string>
+    <string name="kcp_nodelay_desc">Отправка без задержки накопления</string>
+    <string name="kcp_nc_title">Без контроля перегрузки</string>
+    <string name="kcp_nc_desc">Не сбрасывать окно при потерях</string>
+    <string name="kcp_acknodelay_title">ACK сразу</string>
+    <string name="kcp_acknodelay_desc">Ниже задержка, выше служебный трафик</string>
+    <string name="kcp_value_positive">Нужно число больше нуля</string>
+    <string name="kcp_value_nonneg">Нужно 0 или больше</string>
+    <string name="kcp_mtu_invalid">Нужно значение от 300 до 1350</string>
+    <string name="load_wg_conf">Загрузить из файла</string>
+    <string name="connection_config_section">Конфигурация туннеля</string>
+    <string name="change_server">Сменить сервер</string>
+
+    <!-- Приложение -->
+    <string name="settings_app">Приложение</string>
+    <string name="settings_app_desc">Тема, приватность и обновления</string>
+    <string name="app_section_interface">Интерфейс</string>
+    <string name="app_section_connection">Подключение</string>
+    <string name="battery_opt_title">Работа в фоне без ограничений</string>
+    <string name="battery_opt_on">Ограничений нет. Если туннель всё равно рвётся во сне - откройте «Батарея» и выберите «Без ограничений»</string>
+    <string name="battery_opt_off">Не разрешено - в спящем режиме туннель рвётся</string>
+    <string name="auto_connect_title">Подключаться при запуске</string>
+    <string name="auto_connect_desc">Восстанавливать сессию при открытии приложения, если её оборвала система</string>
+    <string name="app_section_prompts">Подсказки</string>
+    <string name="suppress_update_prompt_title">Не предлагать обновления</string>
+    <string name="suppress_update_prompt_desc">Не показывать диалог с предложением обновиться</string>
+    <string name="suppress_tg_prompt_title">Не предлагать Telegram</string>
+    <string name="suppress_tg_prompt_desc">Не показывать диалог с предложением подписаться на канал</string>
+    <string name="app_section_updates">Обновления</string>
+    <string name="app_section_reset">Сброс</string>
+    <string name="app_reset_desc">Удалить все данные приложения</string>
+    <string name="update_current_version">Текущая версия %1$s</string>
+
+    <!-- Резервная копия (экспорт/восстановление) -->
+    <string name="app_section_backup">Резервная копия</string>
+    <string name="backup_export_title">Экспорт настроек</string>
+    <string name="backup_export_desc">Профили и настройки в зашифрованный файл</string>
+    <string name="backup_export_action">Экспортировать</string>
+    <string name="backup_restore_title">Восстановление</string>
+    <string name="backup_restore_action">Восстановить</string>
+    <string name="backup_password_label">Пароль</string>
+    <string name="backup_password_confirm_label">Повторите пароль</string>
+    <string name="backup_password_hint">Понадобится при восстановлении на другом устройстве. Восстановить нельзя.</string>
+    <string name="backup_password_empty">Введите пароль</string>
+    <string name="backup_password_mismatch">Пароли не совпадают</string>
+    <string name="backup_export_ok">Настройки экспортированы</string>
+    <string name="backup_export_fail">Не удалось сохранить файл</string>
+    <string name="backup_restore_warning">Текущие серверы и настройки будут заменены.</string>
+    <string name="backup_restore_ok">Восстановлено серверов: %1$d</string>
+    <string name="backup_restore_fail">Не удалось восстановить</string>
+    <string name="backup_restore_bad_password">Неверный пароль</string>
+    <string name="backup_restore_bad_file">Неверный формат файла</string>
+
+    <!-- О проекте -->
+    <string name="settings_about">О проекте</string>
+    <string name="settings_about_desc">Версия, описание и ссылки</string>
+    <string name="about_description">FreeFi проксирует WireGuard и Xray-трафик через публичные TURN-сервера. Открытый исходный код и никакой телеметрии: все настройки хранятся только на вашем устройстве.</string>
+    <string name="about_links">Ссылки</string>
+</resources>

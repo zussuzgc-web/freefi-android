@@ -1,0 +1,16 @@
+# В индексе и на диске - LF (gradlew/CI требуют LF), кроме .bat
+* text=auto eol=lf
+
+*.sh text eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
+
+# Бинарные файлы
+*.jar binary
+*.aar binary
+*.apk binary
+*.so binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary

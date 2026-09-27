@@ -1,0 +1,589 @@
+package com.freeturn.app.viewmodel.settings
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.freeturn.app.data.AppPreferences
+import com.freeturn.app.data.backup.BackupCrypto
+import com.freeturn.app.data.config.ClientConfig
+import com.freeturn.app.data.config.KcpProfile
+import com.freeturn.app.data.config.ObfProfile
+import com.freeturn.app.data.control.UninstallData
+import com.freeturn.app.data.server.Server
+import com.freeturn.app.data.server.ServerOpts
+import com.freeturn.app.data.server.ServersSnapshot
+import com.freeturn.app.domain.backup.BackupManager
+import com.freeturn.app.domain.update.AppUpdater
+import com.freeturn.app.domain.proxy.ProxyServiceLauncher
+import com.freeturn.app.domain.proxy.ProxyOrchestrator
+import com.freeturn.app.domain.server.ServerSetupRepository
+import com.freeturn.app.domain.ssh.SshRepository
+import com.freeturn.app.domain.share.MySubscription
+import com.freeturn.app.domain.share.ShareRepository
+import com.freeturn.app.domain.share.SubscriptionSyncer
+import com.freeturn.app.viewmodel.uiError
+import com.freeturn.app.domain.UpdateState
+import com.freeturn.app.domain.proxy.ProxyStore
+import com.freeturn.app.domain.ping.PingState
+import com.freeturn.app.domain.ping.PingUtil
+import com.freeturn.app.domain.ping.toPingState
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import java.io.IOException
+import java.time.Instant
+
+sealed interface ServerCleanupState {
+    data object Idle : ServerCleanupState
+    data object Running : ServerCleanupState
+    data class Done(val data: UninstallData) : ServerCleanupState
+    data class Error(val message: String) : ServerCleanupState
+}
+
+class SettingsViewModel(
+    private val prefs: AppPreferences,
+    private val proxyLauncher: ProxyServiceLauncher,
+    private val sshRepository: SshRepository,
+    private val serverSetup: ServerSetupRepository,
+    private val appUpdater: AppUpdater,
+    private val orchestrator: ProxyOrchestrator,
+    private val backupManager: BackupManager,
+    private val shareRepo: ShareRepository,
+    private val subscriptionSyncer: SubscriptionSyncer,
+    context: Context
+) : ViewModel() {
+
+    private val appContext = context.applicationContext
+
+    val clientConfig: StateFlow<ClientConfig> = prefs.clientConfigFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ClientConfig())
+
+    val proxyListen: StateFlow<String> = prefs.proxyListenFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "0.0.0.0:56000")
+
+    val proxyConnect: StateFlow<String> = prefs.proxyConnectFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "127.0.0.1:40537")
+
+    val dynamicTheme: StateFlow<Boolean> = prefs.dynamicThemeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    val accentColor: StateFlow<Int> = prefs.accentColorFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val backgroundColor: StateFlow<Int> = prefs.backgroundColorFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    val nerdMode: StateFlow<Boolean> = prefs.nerdModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val serversSnapshot: StateFlow<ServersSnapshot> = prefs.serversSnapshot
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ServersSnapshot())
+
+    /** Текущие результаты замера пинга по серверам (serverId -> состояние). */
+    private val _serverPings = MutableStateFlow<Map<String, PingState>>(emptyMap())
+    val serverPings: StateFlow<Map<String, PingState>> = _serverPings.asStateFlow()
+
+    private val pingJobs = mutableMapOf<String, Job>()
+
+    /** Проверить пинг одного сервера. Повторный вызов во время замера игнорируется. */
+    fun checkServerPing(serverId: String) {
+        if (pingJobs[serverId]?.isActive == true) return
+        val server = serversSnapshot.value.list.firstOrNull { it.id == serverId } ?: return
+        val target = PingUtil.pingTarget(server) ?: return
+        _serverPings.update { it + (serverId to PingState.Checking) }
+        pingJobs[serverId] = viewModelScope.launch {
+            val result = PingUtil.ping(target)
+            pingJobs.remove(serverId)
+            _serverPings.update { it + (serverId to result.toPingState()) }
+        }
+    }
+
+    /** Проверить пинг всех серверов списка. */
+    fun checkAllPings() {
+        serversSnapshot.value.list.forEach { checkServerPing(it.id) }
+    }
+
+    val updateState: StateFlow<UpdateState> = appUpdater.state
+
+    /** Статус подписки своего клиента на активном сервере; null - ещё не известно/недоступно. */
+    private val _subscription = MutableStateFlow<MySubscription?>(null)
+    val subscription: StateFlow<MySubscription?> = _subscription.asStateFlow()
+
+    private var subscriptionJob: Job? = null
+    private var lastSubServerId: String? = null
+
+    private val _isInitialized = MutableStateFlow(false)
+    val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
+
+    private val _initialTgSubscribeShown = MutableStateFlow(false)
+    val initialTgSubscribeShown: StateFlow<Boolean> = _initialTgSubscribeShown.asStateFlow()
+
+    // Снимок не даёт диалогу мигнуть на дефолтном значении до первого emit.
+    private val _initialSuppressTgPrompt = MutableStateFlow(false)
+    val initialSuppressTgPrompt: StateFlow<Boolean> = _initialSuppressTgPrompt.asStateFlow()
+
+    val suppressUpdatePrompt: StateFlow<Boolean> = prefs.suppressUpdatePromptFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val suppressTgPrompt: StateFlow<Boolean> = prefs.suppressTgPromptFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val autoConnect: StateFlow<Boolean> = prefs.autoConnectFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val privacyMode: StateFlow<Boolean> = prefs.privacyModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val seasonalDecor: StateFlow<Boolean> = prefs.seasonalDecorFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), true)
+
+    val hotspotProxyEnabled: StateFlow<Boolean> = prefs.hotspotProxyEnabledFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    // Ожидаем DataStore, чтобы дефолт StateFlow не пропустил диалог первой сессии.
+    suspend fun batteryPromptShownOnce(): Boolean = prefs.batteryPromptShownFlow.first()
+
+    // Persist мгновенный; сетевые рестарты коалесцируются.
+    private val syncSideEffectMutex = Mutex()
+    private var syncSideEffectJob: Job? = null
+    private val syncSideEffectDebounceMs = 600L
+
+    init {
+        viewModelScope.launch {
+            _initialTgSubscribeShown.value = prefs.tgSubscribeShownFlow.first()
+            _initialSuppressTgPrompt.value = prefs.suppressTgPromptFlow.first()
+            ProxyStore.setLogsEnabled(prefs.clientConfigFlow.first().logsEnabled)
+            _isInitialized.value = true
+        }
+        // Пере-проверка подписки при смене активного сервера.
+        viewModelScope.launch {
+            serversSnapshot.collect { snap ->
+                val active = snap.active ?: snap.list.firstOrNull()
+                if (snap.loaded && active != null && lastSubServerId != active.id) {
+                    lastSubServerId = active.id
+                    refreshSubscription()
+                }
+            }
+        }
+        viewModelScope.launch {
+            appUpdater.checkForUpdate(silent = true)
+        }
+    }
+
+    /**
+     * Статус подписки своего клиента на активном сервере.
+     * Источник: срок некогда был зашит в share-ссылку (для гостя без SSH) —
+     * живёт в client.subscriptionExpiresEpoch; при наличии SSH переспрашиваем
+     * сервер (авторитетный share-list) и перекрываем ссылочное значение.
+     */
+    fun refreshSubscription() {
+        subscriptionJob?.cancel()
+        subscriptionJob = viewModelScope.launch {
+            // Ошибка интерфейса здесь не должна ронять процесс (коллбэк идёт со старта/импорта).
+            _subscription.value = runCatching { currentSubscription() }.getOrNull()
+        }
+    }
+
+    /** Живой опрос подписки на активном сервере; без SSH — срок из share-ссылки. */
+    private suspend fun currentSubscription(): MySubscription? {
+        val snap = serversSnapshot.value
+        val active = snap.active ?: snap.list.firstOrNull() ?: return null
+        val linkExp = active.client.subscriptionExpiresEpoch
+        val linkSub = if (linkExp > 0L) MySubscription(
+            found = true,
+            expiresEpoch = linkExp,
+            expired = linkExp <= Instant.now().epochSecond
+        ) else null
+        if (active.ssh.ip.isBlank()) {
+            // Гость без SSH: поверх снимка из ссылки - живые данные statusd
+            // (порт знаем, если сервер с новым statusd и ссылка несёт sp).
+            val live = runCatching { subscriptionSyncer.refresh() }
+                .getOrNull()?.takeIf { it.found }
+            return live ?: linkSub
+        }
+        val cfgClientId = active.client.clientId.trim()
+        val ownId = cfgClientId.ifBlank {
+            runCatching { prefs.ownClientId() }.getOrNull() ?: return null
+        }
+        val live = shareRepo.mySubscription(active.ssh, ownId)
+            .getOrNull()
+            ?.takeIf { it.found }
+        return live ?: linkSub
+    }
+
+    fun setPrivacyMode(enabled: Boolean) {
+        viewModelScope.launch { prefs.setPrivacyMode(enabled) }
+    }
+
+    fun setSeasonalDecor(enabled: Boolean) {
+        viewModelScope.launch { prefs.setSeasonalDecor(enabled) }
+    }
+
+    // Применяется со следующего запуска: слушающий порт поднимается вместе с сессией.
+    fun setHotspotProxyEnabled(enabled: Boolean) {
+        viewModelScope.launch { prefs.setHotspotProxyEnabled(enabled) }
+    }
+
+    fun setDynamicTheme(enabled: Boolean) {
+        viewModelScope.launch { prefs.setDynamicTheme(enabled) }
+    }
+
+    fun setAccentColor(argb: Int) {
+        viewModelScope.launch { prefs.setAccentColor(argb) }
+    }
+
+    fun setBackgroundColor(argb: Int) {
+        viewModelScope.launch { prefs.setBackgroundColor(argb) }
+    }
+
+    fun setNerdMode(enabled: Boolean) {
+        viewModelScope.launch { prefs.setNerdMode(enabled) }
+    }
+
+    fun setTgSubscribeShown() {
+        viewModelScope.launch { prefs.setTgSubscribeShown() }
+    }
+
+    fun setBatteryPromptShown() {
+        viewModelScope.launch { prefs.setBatteryPromptShown() }
+    }
+
+    fun setSuppressUpdatePrompt(enabled: Boolean) {
+        viewModelScope.launch { prefs.setSuppressUpdatePrompt(enabled) }
+    }
+
+    fun setSuppressTgPrompt(enabled: Boolean) {
+        viewModelScope.launch { prefs.setSuppressTgPrompt(enabled) }
+    }
+
+    fun setAutoConnect(enabled: Boolean) {
+        viewModelScope.launch { prefs.setAutoConnect(enabled) }
+    }
+
+    // expectedActiveId не даёт отложенной записи затереть новый активный сервер.
+    fun saveClientConfig(config: ClientConfig, expectedActiveId: String? = null) {
+        viewModelScope.launch {
+            val targetId = expectedActiveId
+                ?: prefs.serversSnapshot.first().activeId ?: return@launch
+            if (!prefs.updateServer(targetId) { it.copy(client = config) }) return@launch
+            if (targetId == prefs.serversSnapshot.first().activeId) {
+                ProxyStore.setLogsEnabled(config.logsEnabled)
+            }
+        }
+    }
+
+    fun setSplitTunnelMode(value: String) {
+        viewModelScope.launch {
+            prefs.updateActiveServer {
+                it.copy(client = it.client.copy(splitTunnelMode = value))
+            }
+        }
+    }
+
+    fun setSplitTunnelApps(value: String) {
+        viewModelScope.launch {
+            val trimmed = value.trim()
+            prefs.updateActiveServer {
+                it.copy(client = it.client.copy(splitTunnelApps = trimmed))
+            }
+        }
+    }
+
+    // Ручной сервер создаётся неактивным и с sync OFF, чтобы его можно было донастроить без SSH.
+    fun addManualServer(name: String, onAdded: (String) -> Unit) {
+        viewModelScope.launch {
+            val server = Server(name = name, client = ClientConfig(syncServerSwitches = false))
+            prefs.addServer(server)?.let(onAdded)
+        }
+    }
+
+    fun renameServer(id: String, name: String) {
+        viewModelScope.launch { prefs.renameServer(id, name) }
+    }
+
+    fun cloneServer(id: String, onCloned: (String) -> Unit) {
+        viewModelScope.launch { prefs.cloneServer(id)?.let(onCloned) }
+    }
+
+    fun applyServer(id: String) {
+        viewModelScope.launch {
+            val target = prefs.serversSnapshot.first().list.firstOrNull { it.id == id }
+                ?: return@launch
+            prefs.setActiveServerId(target.id)
+
+            sshRepository.activeSshConfig?.let { prev ->
+                if (prev.ip != target.ssh.ip || prev.port != target.ssh.port) {
+                    sshRepository.disconnect()
+                }
+            }
+
+            orchestrator.restartProxyIfRunning()
+        }
+    }
+
+    private val _cleanupState = MutableStateFlow<ServerCleanupState>(ServerCleanupState.Idle)
+    val cleanupState: StateFlow<ServerCleanupState> = _cleanupState.asStateFlow()
+
+    fun resetCleanupState() { _cleanupState.value = ServerCleanupState.Idle }
+
+    fun deleteServer(id: String) {
+        viewModelScope.launch { prefs.deleteServer(id) }
+    }
+
+    fun cleanupServer(id: String) {
+        viewModelScope.launch {
+            val cfg = serversSnapshot.value.list.firstOrNull { it.id == id }?.ssh ?: return@launch
+            _cleanupState.value = ServerCleanupState.Running
+            // Перед удалением обновляем rootMode: сохранённое значение могло устареть.
+            val mode = serverSetup.detectRootMode(cfg) ?: cfg.rootMode
+            serverSetup.uninstall(cfg.copy(rootMode = mode), withWgPkg = true)
+                .onSuccess { _cleanupState.value = ServerCleanupState.Done(it) }
+                .onFailure { _cleanupState.value = ServerCleanupState.Error(it.uiError(appContext)) }
+        }
+    }
+
+    fun updateServerClient(id: String, transform: (ClientConfig) -> ClientConfig) {
+        viewModelScope.launch {
+            if (!prefs.updateServer(id) { it.copy(client = transform(it.client)) }) return@launch
+            val snap = prefs.serversSnapshot.first()
+            snap.active?.takeIf { it.id == id }?.let {
+                ProxyStore.setLogsEnabled(it.client.logsEnabled)
+            }
+        }
+    }
+
+    fun setActiveVkLink(link: String) {
+        viewModelScope.launch {
+            prefs.updateActiveServer {
+                it.copy(client = it.client.copy(vkLink = link.trim()))
+            }
+        }
+    }
+
+    fun setSyncServerSwitches(enabled: Boolean) {
+        viewModelScope.launch {
+            val changed = prefs.updateActiveServer {
+                it.copy(client = it.client.copy(syncServerSwitches = enabled))
+            }
+            if (!changed) return@launch
+            scheduleServerSync()
+        }
+    }
+
+    /** Отложенный рестарт пары сервер+клиент: правки летят пачками, SSH-команда - одна. */
+    private fun scheduleServerSync() {
+        // NonCancellable не даёт новому переключению оборвать SSH-команду на полпути.
+        syncSideEffectJob?.cancel()
+        syncSideEffectJob = viewModelScope.launch {
+            delay(syncSideEffectDebounceMs)
+            syncSideEffectMutex.withLock {
+                if (!prefs.clientConfigFlow.first().syncServerSwitches) return@withLock
+                withContext(NonCancellable) {
+                    orchestrator.restartServerIfRunning()
+                    orchestrator.restartProxyIfRunning()
+                }
+            }
+        }
+    }
+
+    fun setProxyMode(id: String?, mode: String) = updateOpts(id) { it.copy(proxyMode = mode) }
+
+    /** Режим и ARQ одной транзакцией: рестарт пары идёт один раз на "Применить". */
+    fun applyForwardConfig(id: String?, mode: String, kcp: KcpProfile) =
+        updateOpts(id) { it.copy(proxyMode = mode, kcp = kcp) }
+
+    /**
+     * Режим и ARQ обязаны совпадать с сервером, поэтому правка активного сервера
+     * тянет за собой рестарт обеих сторон - как в apply-модели экрана сервера.
+     */
+    private fun updateOpts(id: String?, transform: (ServerOpts) -> ServerOpts) {
+        viewModelScope.launch {
+            val changed = if (id == null) {
+                prefs.updateActiveServer { it.copy(opts = transform(it.opts)) }
+            } else {
+                prefs.updateServer(id) { it.copy(opts = transform(it.opts)) }
+            }
+            if (!changed) return@launch
+            if (id != null && id != prefs.serversSnapshot.first().activeId) return@launch
+            scheduleServerSync()
+        }
+    }
+
+    // Одна транзакция и один рестарт сохраняют атомарность apply-модели.
+    fun applyServerConfig(
+        listen: String,
+        connect: String,
+        proxyMode: String,
+        obfProfile: String,
+        obfKey: String,
+        obfTimingMs: Int
+    ) {
+        viewModelScope.launch {
+            val sync = prefs.clientConfigFlow.first().syncServerSwitches
+            val trimmedKey = obfKey.trim()
+            val changed = prefs.updateActiveServer { s ->
+                val effKey = trimmedKey.ifBlank {
+                    s.opts.obfKey.ifBlank {
+                        if (obfProfile != ObfProfile.NONE) ObfProfile.generateKey() else ""
+                    }
+                }
+                s.copy(
+                    proxyListen = listen,
+                    proxyConnect = connect,
+                    opts = s.opts.copy(
+                        proxyMode = proxyMode,
+                        obfProfile = obfProfile,
+                        obfKey = effKey,
+                        obfTimingMs = obfTimingMs
+                    )
+                )
+            }
+            if (changed) {
+                if (sync) {
+                    orchestrator.restartServerIfRunning(preferListen = listen, preferConnect = connect)
+                } else {
+                    sshRepository.logNote("рестарт сервера пропущен: синхронизация выключена")
+                }
+                orchestrator.restartProxyIfRunning()
+            }
+        }
+    }
+
+    // Неактивный сервер обновляется без вмешательства в рантайм активного.
+    fun updateServerConfig(
+        id: String,
+        listen: String,
+        connect: String,
+        proxyMode: String,
+        obfProfile: String,
+        obfKey: String,
+        obfTimingMs: Int
+    ) {
+        viewModelScope.launch {
+            prefs.updateServer(id) { target ->
+                val effKey = obfKey.trim().ifBlank {
+                    target.opts.obfKey.ifBlank {
+                        if (obfProfile != ObfProfile.NONE) ObfProfile.generateKey() else ""
+                    }
+                }
+                target.copy(
+                    proxyListen = listen,
+                    proxyConnect = connect,
+                    opts = target.opts.copy(
+                        proxyMode = proxyMode,
+                        obfProfile = obfProfile,
+                        obfKey = effKey,
+                        obfTimingMs = obfTimingMs
+                    )
+                )
+            }
+        }
+    }
+
+    fun checkForUpdate() {
+        viewModelScope.launch { appUpdater.checkForUpdate(silent = false) }
+    }
+
+    fun downloadUpdate() {
+        viewModelScope.launch { appUpdater.downloadUpdate() }
+    }
+
+    fun installUpdate() {
+        appUpdater.installUpdate()
+    }
+
+    fun resetUpdateState() {
+        appUpdater.resetState()
+    }
+
+    // Буфер сохраняет событие, пока экран не подписан.
+    private val _backupEvents = MutableSharedFlow<BackupEvent>(extraBufferCapacity = 1)
+    val backupEvents: SharedFlow<BackupEvent> = _backupEvents.asSharedFlow()
+
+    fun exportBackup(uri: Uri, password: String) {
+        viewModelScope.launch {
+            val event = try {
+                val bytes = backupManager.export(password)
+                withContext(Dispatchers.IO) {
+                    appContext.contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+                        ?: throw IOException("no output stream")
+                }
+                BackupEvent.ExportSuccess
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                BackupEvent.ExportFailed
+            }
+            _backupEvents.emit(event)
+        }
+    }
+
+    fun restoreBackup(uri: Uri, password: String) {
+        viewModelScope.launch {
+            val event = try {
+                val bytes = withContext(Dispatchers.IO) {
+                    appContext.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        ?: throw IOException("no input stream")
+                }
+                // Разбор до остановки рантайма: неверный пароль не должен гасить подключение.
+                val data = backupManager.decode(bytes, password)
+                proxyLauncher.stop()
+                val count = backupManager.restore(data)
+                sshRepository.resetAll()
+                ProxyStore.clearLogs()
+                BackupEvent.RestoreSuccess(count)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: BackupCrypto.BadPasswordException) {
+                BackupEvent.RestoreFailed(RestoreFailReason.BAD_PASSWORD)
+            } catch (_: BackupCrypto.FormatException) {
+                BackupEvent.RestoreFailed(RestoreFailReason.BAD_FILE)
+            } catch (_: Exception) {
+                BackupEvent.RestoreFailed(RestoreFailReason.IO)
+            }
+            _backupEvents.emit(event)
+        }
+    }
+
+    fun resetAllSettings() {
+        viewModelScope.launch {
+            proxyLauncher.stop()
+            prefs.resetAll()
+            sshRepository.resetAll()
+            ProxyStore.clearLogs()
+
+            val intent = appContext.packageManager.getLaunchIntentForPackage(appContext.packageName)
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                appContext.startActivity(intent)
+            }
+        }
+    }
+}
+
+enum class RestoreFailReason { BAD_PASSWORD, BAD_FILE, IO }
+
+sealed interface BackupEvent {
+    data object ExportSuccess : BackupEvent
+    data object ExportFailed : BackupEvent
+    data class RestoreSuccess(val count: Int) : BackupEvent
+    data class RestoreFailed(val reason: RestoreFailReason) : BackupEvent
+}

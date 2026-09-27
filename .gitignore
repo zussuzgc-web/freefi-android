@@ -1,0 +1,87 @@
+# --- Локальное/личное: НЕ попадает в open-source репозиторий ---
+
+# состояние эмулятора, ссылки на серверы, бэкапы настроек
+prefs.pb
+prefs2.pb
+emuprefs.*
+backups/
+backup-server-*/
+SAVE-*.md
+link*.txt
+mamatel-new.txt
+new-server-owner-link.txt
+ft-captcha-live.html
+ld1.png
+version.txt
+
+# деплой-скрипты владельца
+statusd-sim.ps1
+deploy-server.ps1
+deploy-server.bat
+client-test.exe
+log
+test_status.log
+
+# Приватный деплой страницы оплаты - в open-source не публикуется
+/.github/workflows/payment-pages.yml
+
+# серверная сторона и инструменты (не входят в публикацию приложения)
+server-control/
+payment-pages/
+deploy/
+dist-server/
+dist-win/
+failover/
+toolchain/
+aarbuild/
+gopath/
+free-turn-proxy-src/
+wintun-test/
+tmp/
+release/
+
+# логи сборок / дампы падений VM
+*.log
+hs_err_*.log
+replay_pid_*.log
+
+# артефакты, архивы, APK
+*.apk
+*.zip
+*.exe
+
+# дампы uiautomator в корне
+/r?.xml
+/s?.xml
+/ui?.xml
+/ui_imp.xml
+/uia.xml
+/uix.xml
+
+# --- Приложение / Gradle / Android Studio (стандартный шаблон) ---
+
+# Ядро - качается таской fetchFreeturnAar из релизов free-turn-proxy
+/app/libs/
+
+.gradle/
+**/build/
+.kotlin/
+.cache/
+.tools/
+local.properties
+.idea/
+*.iml
+*.iws
+*.ipr
+captures/
+.cxx
+.externalNativeBuild
+
+# Подпись
+keystore.properties
+*.jks
+*.keystore
+
+# Claude Code
+.claude/
+CLAUDE.md

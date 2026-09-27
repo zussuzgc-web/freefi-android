@@ -1,0 +1,15 @@
+<resources>
+    <!-- Окно видно миллисекунды до setContent — Compose рисует поверх.
+         Платформенная тема вместо AppCompat: DayNight собран вручную
+         через values-night, appcompat-зависимость не нужна. -->
+    <style name="Base.Theme.Freefy" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <style name="Theme.Freefy" parent="Base.Theme.Freefy" />
+
+    <!-- Splash screen theme (Core Splash Screen API) -->
+    <style name="Theme.Freefy.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">#FF415F91</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/Theme.Freefy</item>
+    </style>
+</resources>
