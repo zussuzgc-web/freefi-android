@@ -20,4 +20,6 @@ jobs:
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
+          # Встроенный токен: PR и релизы создаются в этом же репозитории,
+          # отдельный PAT не нужен (permissions выше это разрешают).
+          token: ${{ secrets.GITHUB_TOKEN }}
