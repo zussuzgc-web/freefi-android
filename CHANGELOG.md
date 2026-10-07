@@ -1,5 +1,17 @@
 # Changelog
 
+## [6.2.0](https://github.com/zussuzgc-web/freefi-android/compare/v6.1.0...v6.2.0) (2026-10-07)
+
+
+### Features
+
+* 6.1.0 — freefi:// links, deduct days in admin, in-app update ([29bf65e](https://github.com/zussuzgc-web/freefi-android/commit/29bf65e15c60cddf2626ad04c4c2869bfb370072))
+
+
+### Fixes
+
+* **server:** сборка без server-control отдаёт ошибку вместо падения ([15f4d7d](https://github.com/zussuzgc-web/freefi-android/commit/15f4d7d30e00f55c2b0bf901998148f660f481ee))
+
 ## [6.0.2](https://github.com/zussuzgc-web/freefi-android/compare/v6.0.1...v6.0.2)
 
 ### Fixes
