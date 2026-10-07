@@ -51,7 +51,7 @@ import org.koin.androidx.compose.koinViewModel
 import com.freeturn.app.ui.theme.Spacing
 
 /**
- * Sheet импорта по freeturn://-ссылке. Живёт на уровне AppNavigation поверх
+ * Sheet импорта по share-ссылке (freefi://, legacy freeturn://). Живёт на уровне AppNavigation поверх
  * NavHost (как CaptchaWebViewDialog) - всплывает из любого места приложения.
  */
 @Composable

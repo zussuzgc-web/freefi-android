@@ -5,7 +5,8 @@ import org.json.JSONObject
 import java.util.Base64
 
 /**
- * Share-ссылка `freeturn://base64url(JSON)`.
+ * Share-ссылка `freefi://base64url(JSON)` (ранее — `freeturn://…`: обе схемы принимаются,
+ * генерируем только `freefi://`).
  * JSON собирается вручную для сохранения порядка ключей (как в Go json.Marshal).
  */
 data class FreeturnLink(
@@ -63,16 +64,27 @@ data class FreeturnLink(
     }
 
     companion object {
-        const val SCHEME = "freeturn://"
+        const val SCHEME = "freefi://"
+        /** Старая схема, которую по-прежнему принимаем при импорте. */
+        const val LEGACY_SCHEME = "freeturn://"
         const val VERSION = 1
 
-        fun looksLikeLink(raw: String): Boolean =
-            raw.trim().startsWith(SCHEME, ignoreCase = true)
+        /** Длина префикса принятой схемы или null, если это не share-ссылка. */
+        private fun schemeLength(raw: String): Int? {
+            val t = raw.trim()
+            return when {
+                t.startsWith(SCHEME, ignoreCase = true) -> SCHEME.length
+                t.startsWith(LEGACY_SCHEME, ignoreCase = true) -> LEGACY_SCHEME.length
+                else -> null
+            }
+        }
+
+        fun looksLikeLink(raw: String): Boolean = schemeLength(raw) != null
 
         fun parse(raw: String): Result<FreeturnLink> = runCatching {
             val trimmed = raw.trim()
-            require(trimmed.startsWith(SCHEME, ignoreCase = true)) { "invalid scheme" }
-            val payload = trimmed.substring(SCHEME.length)
+            val prefixLen = requireNotNull(schemeLength(raw)) { "invalid scheme" }
+            val payload = trimmed.substring(prefixLen)
             require(payload.isNotEmpty()) { "empty payload" }
             val json = String(Base64.getUrlDecoder().decode(payload), Charsets.UTF_8)
             val o = JSONObject(json)

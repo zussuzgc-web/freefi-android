@@ -79,7 +79,7 @@ class MainActivity : ComponentActivity() {
         proxyViewModel.setMetricsVisible(false)
     }
 
-    // singleTask: freeturn://-ссылка при живой задаче приходит сюда, не в onCreate.
+    // singleTask: freefi://-ссылка при живой задаче приходит сюда, не в onCreate.
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         // Иначе getIntent() после recreation вернёт исходный интент запуска.

@@ -47,7 +47,7 @@
         android:enableOnBackInvokedCallback="true"
         tools:targetApi="33">
 
-        <!-- singleTask: freeturn://-ссылка при живой задаче приходит в onNewIntent,
+        <!-- singleTask: freefi://-ссылка при живой задаче приходит в onNewIntent,
              а не плодит вторую активити поверх работающего туннеля. -->
         <activity
             android:name=".MainActivity"
@@ -63,6 +63,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
+                <!-- Новая схема freefi + legacy freeturn, чтобы старые ссылки не ломались. -->
+                <data android:scheme="freefi" />
                 <data android:scheme="freeturn" />
             </intent-filter>
             <!-- Долгое нажатие плитки Quick Settings открывает приложение. -->

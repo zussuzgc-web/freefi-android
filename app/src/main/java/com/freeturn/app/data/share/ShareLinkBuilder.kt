@@ -6,7 +6,7 @@ import com.freeturn.app.data.config.ProxyMode
 import com.freeturn.app.data.server.Server
 
 /**
- * Собирает freeturn://-ссылку для пользователя.
+ * Собирает freefi://-ссылку для пользователя (старые freeturn:// при этом принимаются).
  * vkLink передаётся вызывающим только по явному согласию владельца,
  * иначе получатель вводит свой.
  */

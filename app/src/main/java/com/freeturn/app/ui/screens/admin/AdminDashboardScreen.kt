@@ -255,10 +255,10 @@ fun AdminDashboardScreen(
     onBlock: (String) -> Unit,
     onUnblock: (String) -> Unit,
     onRevoke: (String) -> Unit,
-    onExtend: (String, Int) -> Unit,
+    onExtend: (String, Int, Boolean) -> Unit,
     onBlockMany: (List<String>) -> Unit,
     onRevokeMany: (List<String>) -> Unit,
-    onExtendMany: (List<String>, Int) -> Unit,
+    onExtendMany: (List<String>, Int, Boolean) -> Unit,
     onCreate: (String, Int, String, String) -> Unit,
     onGenerateId: () -> String,
     onGenerateLink: (AdminClient) -> Unit,
@@ -887,8 +887,8 @@ fun AdminDashboardScreen(
     showExtendDialog?.let { clientId ->
         ExtendClientDialog(
             onDismiss = { showExtendDialog = null },
-            onExtend = { durationMin ->
-                onExtend(clientId, durationMin)
+            onExtend = { durationMin, subtract ->
+                onExtend(clientId, durationMin, subtract)
                 showExtendDialog = null
             }
         )
@@ -897,8 +897,8 @@ fun AdminDashboardScreen(
     if (showBulkExtendDialog) {
         ExtendClientDialog(
             onDismiss = { showBulkExtendDialog = false },
-            onExtend = { durationMin ->
-                onExtendMany(selectedIds.toList(), durationMin)
+            onExtend = { durationMin, subtract ->
+                onExtendMany(selectedIds.toList(), durationMin, subtract)
                 selectedIds = emptySet()
                 showBulkExtendDialog = false
             }
@@ -1205,15 +1205,19 @@ private fun ClientCard(
 @Composable
 private fun DurationSelector(
     selectedMinutes: Int,
-    onSelect: (Int) -> Unit
+    onSelect: (Int) -> Unit,
+    subtract: Boolean = false
 ) {
     var customDays by remember { mutableStateOf("") }
+    val presets = PRESET_DURATIONS_MIN.filter { (min, _) ->
+        !(subtract && min == AdminViewModel.UNLIMITED_MINUTES)
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(Spacing.sm)
         ) {
-            PRESET_DURATIONS_MIN.forEach { (min, label) ->
+            presets.forEach { (min, label) ->
                 FilterChip(
                     selected = selectedMinutes == min,
                     onClick = { onSelect(min) },
@@ -1235,7 +1239,7 @@ private fun DurationSelector(
                         if (days in 1..9999) onSelect(days * 1440)
                     }
                 },
-                label = { Text("Своё количество дней") },
+                label = { Text(if (subtract) "На сколько дней убавить" else "Своё количество дней") },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 modifier = Modifier.weight(1f)
@@ -1373,35 +1377,60 @@ private fun GeneratedLinkDialog(
 @Composable
 private fun ExtendClientDialog(
     onDismiss: () -> Unit,
-    onExtend: (Int) -> Unit
+    onExtend: (Int, Boolean) -> Unit
 ) {
     var durationMin by remember { mutableIntStateOf(1440) }
+    var subtract by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Продлить подписку") },
+        title = { Text(if (subtract) "Убавить подписку" else "Продлить подписку") },
         text = {
             Column {
+                // Направление: продлить (по умолчанию) или убавить оставшийся срок.
+                Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
+                    FilterChip(
+                        selected = !subtract,
+                        onClick = {
+                            subtract = false
+                        },
+                        label = { Text("Продлить") }
+                    )
+                    FilterChip(
+                        selected = subtract,
+                        onClick = {
+                            subtract = true
+                            if (durationMin == AdminViewModel.UNLIMITED_MINUTES) durationMin = 1440
+                        },
+                        label = { Text("Убавить") }
+                    )
+                }
+                Spacer(Modifier.height(Spacing.sm))
                 Text(
-                    "На сколько продлить?",
+                    if (subtract) "На сколько убавить?" else "На сколько продлить?",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(Modifier.height(Spacing.md))
                 DurationSelector(
                     selectedMinutes = durationMin,
-                    onSelect = { durationMin = it }
+                    onSelect = { durationMin = it },
+                    subtract = subtract
                 )
                 Spacer(Modifier.height(Spacing.sm))
                 Text(
-                    "Новый срок подхватится клиентом сам: при следующем подключении приложение запросит его у сервера.",
+                    if (subtract) {
+                        "Убавить можно не больше, чем осталось: если уменьшить больше — подписка истечёт сразу."
+                    } else {
+                        "Новый срок подхватится клиентом сам: при следующем подключении приложение запросит его у сервера."
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         },
         confirmButton = {
-            TextButton(onClick = { onExtend(durationMin) }) {
-                Text("Продлить")
+            TextButton(onClick = { onExtend(durationMin, subtract) }) {
+                Text(if (subtract) "Убавить" else "Продлить")
             }
         },
         dismissButton = {

@@ -83,10 +83,10 @@ internal fun NavGraphBuilder.settingsGraph(
                 onBlock = { adminViewModel.blockClient(it) },
                 onUnblock = { adminViewModel.unblockClient(it) },
                 onRevoke = { adminViewModel.revokeClient(it) },
-                onExtend = { id, days -> adminViewModel.extendClient(id, days) },
+                onExtend = { id, days, subtract -> adminViewModel.extendClient(id, days, subtract) },
                 onBlockMany = { adminViewModel.blockClients(it) },
                 onRevokeMany = { adminViewModel.revokeClients(it) },
-                onExtendMany = { ids, days -> adminViewModel.extendClients(ids, days) },
+                onExtendMany = { ids, days, subtract -> adminViewModel.extendClients(ids, days, subtract) },
                 onCreate = { name, days, clientId, vkLink -> adminViewModel.createClient(name, days, clientId, vkLink) },
                 onGenerateId = { adminViewModel.generateClientId() },
                 onGenerateLink = { adminViewModel.generateShareLink(it) },
@@ -120,6 +120,7 @@ internal fun NavGraphBuilder.settingsGraph(
 
         composable<About> {
             AboutScreen(
+                settingsViewModel = settingsViewModel,
                 onBack = { navController.popBackStack() },
                 onAdminAccess = { navController.navigate(AdminLogin) }
             )

@@ -10,7 +10,7 @@ import java.util.Base64
 class FreeturnLinkTest {
 
     /** Ссылка из docs/uri.md Go-репо: {"v":1,"provider":"vk","peer":"1.2.3.4:56000"}. */
-    private val goldenMinimal = "freeturn://eyJ2IjoxLCJwcm92aWRlciI6InZrIiwicGVlciI6IjEuMi4zLjQ6NTYwMDAifQ"
+    private val goldenMinimal = "freefi://eyJ2IjoxLCJwcm92aWRlciI6InZrIiwicGVlciI6IjEuMi4zLjQ6NTYwMDAifQ"
 
     private val wgConf = """
         [Interface]
@@ -39,7 +39,7 @@ class FreeturnLinkTest {
         // Эталон: байт-в-байт вывод Go json.Marshal(wire) для типового конфига.
         val goldenJson = """{"v":1,"provider":"vk","peer":"1.2.3.4:56000","transport":"udp",""" +
             """"obf":"rtpopus","key":"d823fa01cb3e0609b67322f7cf984c4ee2e4ce2e294936fc24ef38c9e59f4799","name":"Papa"}"""
-        val golden = "freeturn://" + Base64.getUrlEncoder().withoutPadding()
+        val golden = "freefi://" + Base64.getUrlEncoder().withoutPadding()
             .encodeToString(goldenJson.toByteArray(Charsets.UTF_8))
 
         val link = FreeturnLink(
@@ -96,7 +96,7 @@ class FreeturnLinkTest {
         val link = FreeturnLink(provider = "vk", peer = "1.2.3.4:56000", statusPort = 0)
         val parsed = FreeturnLink.parse(link.encode()).getOrThrow()
         assertEquals(0, parsed.statusPort)
-        assertFalse("sp" in String(Base64.getUrlDecoder().decode(link.encode().removePrefix("freeturn://")), Charsets.UTF_8))
+        assertFalse("sp" in String(Base64.getUrlDecoder().decode(link.encode().removePrefix(FreeturnLink.SCHEME)), Charsets.UTF_8))
     }
 
     @Test
@@ -113,7 +113,7 @@ class FreeturnLinkTest {
         val goldenJson = """{"v":1,"provider":"vk","peer":"1.2.3.4:56000","mode":"tcp",""" +
             """"kcp":{"nodelay":1,"interval":40,"resend":2,"nc":1,"sndwnd":256,""" +
             """"rcvwnd":256,"mtu":1200,"acknodelay":false},"name":"Papa"}"""
-        val golden = "freeturn://" + Base64.getUrlEncoder().withoutPadding()
+        val golden = "freefi://" + Base64.getUrlEncoder().withoutPadding()
             .encodeToString(goldenJson.toByteArray(Charsets.UTF_8))
 
         val link = FreeturnLink(
@@ -137,7 +137,7 @@ class FreeturnLinkTest {
     @Test
     fun `unknown json fields are ignored`() {
         val json = """{"v":1,"provider":"vk","peer":"1.2.3.4:56000","future_field":"x"}"""
-        val raw = "freeturn://" + Base64.getUrlEncoder().withoutPadding()
+        val raw = "freefi://" + Base64.getUrlEncoder().withoutPadding()
             .encodeToString(json.toByteArray(Charsets.UTF_8))
         assertEquals("1.2.3.4:56000", FreeturnLink.parse(raw).getOrThrow().peer)
     }
@@ -145,8 +145,9 @@ class FreeturnLinkTest {
     @Test
     fun `parse errors`() {
         assertTrue(FreeturnLink.parse("http://x").isFailure)            // схема
-        assertTrue(FreeturnLink.parse("freeturn://").isFailure)         // пустой payload
-        assertTrue(FreeturnLink.parse("freeturn://!!!").isFailure)      // битый base64
+        assertTrue(FreeturnLink.parse("freeturn://").isFailure)         // legacy: пустой payload
+        assertTrue(FreeturnLink.parse("freefi://").isFailure)           // новый: пустой payload
+        assertTrue(FreeturnLink.parse("freefi://!!!").isFailure)        // битый base64
         assertTrue(FreeturnLink.parse(b64Link("not json")).isFailure)   // битый json
         assertTrue(FreeturnLink.parse(b64Link("""{"v":2,"provider":"vk","peer":"x"}""")).isFailure)
         assertTrue(FreeturnLink.parse(b64Link("""{"v":1,"peer":"x"}""")).isFailure)
@@ -154,12 +155,35 @@ class FreeturnLinkTest {
     }
 
     @Test
+    fun `legacy freeturn scheme still parses and re-encodes to freefi`() {
+        val legacy = "freeturn://" + Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(FreeturnLinkTestLinks.minimalJson.toByteArray(Charsets.UTF_8))
+        val parsed = FreeturnLink.parse(legacy).getOrThrow()
+        assertEquals("1.2.3.4:56000", parsed.peer)
+        assertTrue(parsed.encode().startsWith("freefi://"))
+        assertEquals(parsed, FreeturnLink.parse(parsed.encode()).getOrThrow())
+    }
+
+    @Test
+    fun `mixed case legacy scheme is accepted`() {
+        val legacy = "FREETURN://" + Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(FreeturnLinkTestLinks.minimalJson.toByteArray(Charsets.UTF_8))
+        assertEquals("vk", FreeturnLink.parse(legacy).getOrThrow().provider)
+    }
+
+    @Test
     fun `looksLikeLink`() {
+        assertTrue(FreeturnLink.looksLikeLink("  FREEFI://abc "))
         assertTrue(FreeturnLink.looksLikeLink("  FREETURN://abc "))
         assertFalse(FreeturnLink.looksLikeLink("https://example.com"))
     }
 
     private fun b64Link(json: String): String =
-        "freeturn://" + Base64.getUrlEncoder().withoutPadding()
+        FreeturnLink.SCHEME + Base64.getUrlEncoder().withoutPadding()
             .encodeToString(json.toByteArray(Charsets.UTF_8))
+}
+
+private object FreeturnLinkTestLinks {
+    /** {"v":1,"provider":"vk","peer":"1.2.3.4:56000"}. */
+    val minimalJson = """{"v":1,"provider":"vk","peer":"1.2.3.4:56000"}"""
 }

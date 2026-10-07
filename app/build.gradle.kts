@@ -24,12 +24,16 @@ android {
         // gomobile собирает ядро с -androidapi 24.
         minSdk = 24
         targetSdk = 37
-        versionName = "6.0.2" // x-release-please-version
+        versionName = "6.1.0" // x-release-please-version
         // Производный от versionName (M*10000+m*100+p) - release-please бампит только строку версии
         versionCode = versionName!!.split(".").let { (ma, mi, pa) ->
             ma.toInt() * 10000 + mi.toInt() * 100 + pa.toInt()
         }
-        buildConfigField("String", "UPDATE_URL", "\"${System.getenv("FT_UPDATE_URL") ?: ""}\"")
+        // defaultConfig.constraint.update: URL релиза для встроенного обновления (можно переопределить env);
+        // источник — GitHub-релизы приложения (в них публикуются APK-ассеты).
+        val updateUrl = System.getenv("FT_UPDATE_URL")
+            ?: "https://api.github.com/repos/zussuzgc-web/freefi-android/releases/latest"
+        buildConfigField("String", "UPDATE_URL", "\"$updateUrl\"")
     }
 
     splits {

@@ -211,8 +211,15 @@ class AppUpdater(private val context: Context) {
                 if (name.endsWith(".apk")) put(name, asset.getString("browser_download_url"))
             }
         }
+        // Debug (.debug) и release-сборки публикуются с разными именами ассетов:
+        // "…-debug-…" против "…-…". Берём ассет своего build-type, иначе установка
+        // release APK поверх debug сломает подпись/packageName.
+        val wantDebug = BuildConfig.DEBUG
+        val candidates = apkUrlsByName
+            .filterKeys { "debug" in it == wantDebug }
+            .ifEmpty { apkUrlsByName }
         for (abi in Build.SUPPORTED_ABIS) {
-            apkUrlsByName.entries.firstOrNull { it.key.contains(abi) }?.let { return it.value }
+            candidates.entries.firstOrNull { it.key.contains(abi) }?.let { return it.value }
         }
         return null
     }

@@ -140,7 +140,10 @@ class ProxyService : VpnService() {
             ServiceCompat.startForeground(this, ProxyNotifier.NOTIF_ID_FG, notifier.build(), type)
         } catch (e: Exception) {
             // ForegroundServiceStartNotAllowedException и родня: сессии не будет.
-            fail("Не удалось запустить foreground-сервис: ${e.message}")
+            // Намерение НЕ снимаем - система запретила фоновый старт, но после
+            // открытия приложения авто-подключение должно сработать; иначе разовый
+            // отказ Android 12+ выключал VPN насовсем и без единого действия.
+            stopTransient("Не удалось запустить foreground-сервис: ${e.message}")
             return START_NOT_STICKY
         }
 
@@ -338,7 +341,13 @@ class ProxyService : VpnService() {
     private fun onNetworkHandover() {
         // stopping, а не только isRunning: остановка идёт в фоне, и ядро всё ещё живо -
         // без проверки рестарт поднимал бы сессию, которую сворачивают.
-        if (stopping || !engine.isRunning) return
+        if (stopping) return
+        if (!engine.isRunning) {
+            // Тихий выход скрывал главное: ядро уже кончилось, а смена сети пришла
+            // раньше, чем об этом узнали - переподключать было нечего.
+            ProxyStore.log("Смена сети, но ядро уже не живо - переподключение пропущено", LogLevel.Warning)
+            return
+        }
         val slept = (SystemClock.elapsedRealtime() - SystemClock.uptimeMillis() - sleptMillis) / 1000
         ProxyStore.log("Смена сети - переподключение (сон с прошлой проверки $slept c)")
         scope.launch {
@@ -375,19 +384,37 @@ class ProxyService : VpnService() {
             // Ошибка ядра - сессии больше нет: держать поднятый tun не за чем,
             // иначе трафик уходит в интерфейс, за которым никого.
             if (status.phase == ProxyPhase.Error) {
-                // Транзиентный отказ установления (VK не отдал потоки за дедлайн ядра):
-                // пересоздаём сессию сами, ограниченно и с паузой. Голый fail оставил бы
-                // строку ошибки до ручного повторного запуска, а мгновенный вечный ретрай
-                // копил бы авто-решаемые капчи и уводил VK в кулдаун (anonym_token.not_found).
-                if (isTransientConnectError(status.error) &&
-                    connectRetries < CONNECT_RETRIES_MAX &&
-                    isCurrent(session)
-                ) {
+                // Ошибка уже свёрнутой заявки: по ней гасить нельзя - сессию могла
+                // сменить следующая.
+                if (!isCurrent(session)) return@collect
+                // Сессия могла упасть уже после часами работы (обрыв резолва на смене
+                // сети, паника в релее, мёртвый TURN) - это не «битая ссылка», и
+                // гасить прокси за такое нельзя: раньше любая ошибка, кроме
+                // «connect timeout», вела в shutdown+stopSelf, и VPN выключался сам.
+                if (!isTerminalError(status.error) &&
                     scheduleConnectRetry(this.session, status.error)
+                ) {
                     return@collect
                 }
-                shutdown("ошибка ядра: ${status.error}")
-                stopSelf(lastStartId)
+                ProxyStore.log(
+                    "Автоповтор не назначен (терминальная=${isTerminalError(status.error)}, " +
+                        "попыток=$connectRetries): ${status.error}",
+                    LogLevel.Warning
+                )
+                // Терминальная (битая ссылка, звонок закончился) - намерение снимаем:
+                // без правки настроек повтор упрётся в то же самое. Всё остальное -
+                // не наша вина: намерение и фаза Error остаются, и открытие
+                // приложения поднимет VPN заново (см. ProxyViewModel.onForeground).
+                if (isTerminalError(status.error)) fail(status.error)
+                else stopTransient("Ошибка ядра после автоповторов: ${status.error}")
+                return@collect
+            }
+            // Сессия установилась - свежий бюджет автоповторов на случай, если она
+            // упадёт спустя часы работы.
+            if (status.phase == ProxyPhase.Connected && isCurrent(session) && connectRetries > 0) {
+                ProxyStore.log("Соединение установлено - счётчик автоповторов сброшен")
+                connectRetries = 0
+                retryScheduled.set(false)
             }
         }
     }
@@ -494,7 +521,9 @@ class ProxyService : VpnService() {
                     "Watchdog: переподключение не удалось: ${e.stackTraceToString()}",
                     LogLevel.Error
                 )
-                fail("Туннель не восстановился: ${e.message}")
+                // Намерение оставляем: протухший туннель - не повод выключать прокси
+                // до ручного нажатия, иначе рандомный обрыв превращался в ручное включение.
+                stopTransient("Туннель не восстановился: ${e.message}")
             }
         }
     }
@@ -525,21 +554,34 @@ class ProxyService : VpnService() {
     }
 
     /**
-     * Пересоздание сессии после транзиентной ошибки подключения. Попыток - максимум
-     * [CONNECT_RETRIES_MAX], пауза растёт с номером попытки: мгновенный вечный ретрай
-     * сжигал бы персону VK впустую (частые авто-солвы капч уводят её в кулдаун).
+     * Пересоздание сессии после ошибки ядра. Бюджет - [CONNECT_RETRIES_MAX] попыток
+     * на одну сессию (сбрасывается при установлении соединения), пауза зависит от
+     * типа ошибки: мгновенный вечный ретрай сжигал бы персону VK впустую (частые
+     * авто-солвы капч уводят её в кулдаун).
+     *
+     * false - бюджет исчерпан либо повтор уже назначен: вызывающий решает судьбу
+     * сессии сам.
      */
-    private fun scheduleConnectRetry(target: Long, error: String) {
-        if (!retryScheduled.compareAndSet(false, true)) return
-        connectRetries++
-        val attempt = connectRetries
+    private fun scheduleConnectRetry(target: Long, error: String): Boolean {
+        if (!retryScheduled.compareAndSet(false, true)) return false
+        val attempt = connectRetries + 1
+        if (attempt > CONNECT_RETRIES_MAX) {
+            retryScheduled.set(false)
+            return false
+        }
+        connectRetries = attempt
+        val delayMs = if (isTransientConnectError(error)) {
+            CONNECT_RETRY_DELAY_MS * attempt
+        } else {
+            RUNTIME_RETRY_DELAY_MS * attempt
+        }
         scope.launch {
             try {
                 ProxyStore.log(
-                    "Соединение не установлено ($error) - автоповтор $attempt/$CONNECT_RETRIES_MAX",
+                    "Сессия оборвалась ($error) - автоповтор $attempt/$CONNECT_RETRIES_MAX",
                     LogLevel.Warning
                 )
-                delay(CONNECT_RETRY_DELAY_MS * attempt)
+                delay(delayMs)
                 retryScheduled.set(false)
                 if (!isCurrent(target)) return@launch
                 ProxyStore.starting()
@@ -553,14 +595,44 @@ class ProxyService : VpnService() {
                 throw e
             } catch (e: Exception) {
                 ProxyStore.log("Авто-переподключение не удалось: ${e.stackTraceToString()}", LogLevel.Error)
-                fail("Соединение не восстановилось: ${e.message}")
+                // Намерение не снимаем: сбой рестарта - не повод выключать прокси
+                // насовсем, иначе разовый сбой сети превращался в ручное включение.
+                stopTransient("Соединение не восстановилось: ${e.message}")
             }
         }
+        return true
     }
 
     /** Связь оборвалась на установлении (потоки не пришли) - лечится пересозданием сессии. */
     private fun isTransientConnectError(error: String): Boolean =
         TRANSIENT_CONNECT_ERROR.containsMatchIn(error)
+
+    /**
+     * Ошибка, после которой повтор ничего не изменит: битая ссылка на звонок,
+     * закончившийся звонок, отсутствующий провайдер. Всё остальное (обрыв сети,
+     * паника в релее, мёртвый TURN, резолв на смене сети) имеет смысл попробовать
+     * ещё раз.
+     */
+    private fun isTerminalError(error: String): Boolean = TERMINAL_ERROR.containsMatchIn(error)
+
+    /**
+     * Сворачивает сессию, не снимая намерение пользователя: сбой автоповтора или
+     * watchdog'а - не повод выключать прокси до ручного нажатия.
+     *
+     * Фаза остаётся в [ProxyPhase.Error] намеренно: это сигнал «нашего» обрыва, по
+     * которому открытие приложения поднимает VPN заново (ProxyViewModel.onForeground),
+     * и одновременно честное состояние кнопки. [ProxyStore.finish] её не сбрасывает.
+     */
+    private fun stopTransient(message: String): Boolean {
+        if (stopping) return false
+        stopping = true
+        retryScheduled.set(false)
+        ProxyStore.log(message, LogLevel.Error)
+        shutdown(message)
+        ProxyStore.setPhase(ProxyPhase.Error, 0, 0, message)
+        stopSelf(lastStartId)
+        return false
+    }
 
     /** Всегда false - удобно возвращать из веток, где сессия не состоялась. */
     private fun fail(message: String): Boolean {
@@ -656,11 +728,26 @@ class ProxyService : VpnService() {
         const val HEARTBEAT_MS = 60_000L
         /** Тик watchdog'а живости туннеля. Пороги протухания - в [TunnelWatchdog]. */
         const val WATCHDOG_TICK_MS = 15_000L
-        // `connect timeout`/`no stream connected` - потоки TURN не пришли в дедлайн ядра.
-        private val TRANSIENT_CONNECT_ERROR = Regex("(?i)connect timeout|no stream connected")
-        /** Максимум авто-переподключений на один пользовательский старт. */
+        // `connect timeout`/`no stream connected` - потоки TURN не пришли в дедлайн
+        // ядра; `all TURN candidates failed`/`TURN allocate`/`resolve peer addr` -
+        // сетевой обрыв, типично сразу после смены сети. Такие ошибки лечатся
+        // быстрым повтором, в отличие от терминальных (см. TERMINAL_ERROR).
+        private val TRANSIENT_CONNECT_ERROR = Regex(
+            "(?i)connect timeout|no stream connected|all TURN candidates failed" +
+                "|TURN allocate|resolve peer addr|provider backoff active"
+        )
+        // Решения, которым повтор не помогает: битая/чужая ссылка, закончившийся
+        // звонок, нет настроенного провайдера. Повтор тут лишь жжёт персону VK,
+        // поэтому такой сессии намерение снимается.
+        private val TERMINAL_ERROR = Regex(
+            "(?i)INVALID_JOIN_LINK|ANON_BLOCKED|CALL_FULL|FATAL_CAPTCHA_FAILED_NO_STREAMS" +
+                "|no links configured|unknown provider|provider init"
+        )
+        /** Максимум автоповторов на один пользовательский старт (счётчик смежный). */
         const val CONNECT_RETRIES_MAX = 3
-        /** Базовая пауза до автоповтора: растёт как `delay * номер попытки`. */
+        /** Базовая пауза до автоповтора транзиентной ошибки: `delay * номер попытки`. */
         const val CONNECT_RETRY_DELAY_MS = 6_000L
+        /** Пауза для остальных ошибок: их причина обычно дольше живёт, чем сеть. */
+        const val RUNTIME_RETRY_DELAY_MS = 20_000L
     }
 }

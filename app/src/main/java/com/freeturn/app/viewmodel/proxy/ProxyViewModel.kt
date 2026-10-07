@@ -32,19 +32,26 @@ class ProxyViewModel(
     /**
      * Возврат приложения на передний план. Живую сессию не трогаем - открытие окна
      * не событие сети, а пинок ядру рециклил бы рабочие аллокации. Мёртвую поднимаем
-     * только с явного согласия ([AppPreferences.autoConnectFlow]): намерение переживает
-     * смерть процесса и перезагрузку, поэтому без настройки открытие приложения
-     * поднимало VPN само и отбирало tun у чужого.
+     * либо с явного согласия ([AppPreferences.autoConnectFlow]), либо когда она упала
+     * сама (фаза Error при живом намерении [AppPreferences.proxyDesiredFlow]) -
+     * намерение переживает смерть процесса и перезагрузку, поэтому без различий
+     * открытие приложения поднимало VPN само и отбирало tun у чужого.
      *
      * [vpnConsent] - проверка согласия на VpnService, зовётся последней: сам
      * `VpnService.prepare()` отзывает разрешение у активного чужого VPN. Без согласия
      * в WG-режиме стартовать нечем, а спрашивать молча, без действия пользователя, нельзя.
      */
     fun onForeground(vpnConsent: () -> Boolean) {
-        if (ProxyStore.status.value.phase != ProxyPhase.Idle) return
+        val phase = ProxyStore.status.value.phase
+        // Ошибка своей сессии (обрыв сети, исчерпанные автоповторы) - не чужой
+        // туннель: намерение живо, пока пользователь сам не выключил прокси, а чужой
+        // VPN у нас отобрал бы согласие и снёс это намерение через onRevoke. Такой
+        // сценарий поднимаем без autoConnect - иначе каждый обрыв превращался бы в
+        // ручное включение.
+        if (phase != ProxyPhase.Idle && phase != ProxyPhase.Error) return
         viewModelScope.launch {
-            if (!prefs.autoConnectFlow.first()) return@launch
             if (!prefs.proxyDesiredFlow.first()) return@launch
+            if (phase == ProxyPhase.Idle && !prefs.autoConnectFlow.first()) return@launch
             if (prefs.clientConfigFlow.first().wireGuardActive && !vpnConsent()) return@launch
             launcher.start()
         }

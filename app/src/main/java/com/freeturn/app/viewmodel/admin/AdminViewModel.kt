@@ -767,9 +767,9 @@ class AdminViewModel(
         clientIds.forEach { revokeClient(it) }
     }
 
-    /** Массовое продление без даунтайма: каждый клиент продлевается отдельно. */
-    fun extendClients(clientIds: List<String>, durationMinutes: Int) {
-        clientIds.forEach { extendClient(it, durationMinutes) }
+    /** Массовое изменение срока без даунтайма: каждый клиент обрабатывается отдельно. */
+    fun extendClients(clientIds: List<String>, durationMinutes: Int, subtract: Boolean = false) {
+        clientIds.forEach { extendClient(it, durationMinutes, subtract) }
     }
 
     fun revokeClient(clientId: String) {
@@ -832,26 +832,53 @@ class AdminViewModel(
         }
     }
 
-    fun extendClient(clientId: String, durationMinutes: Int) {
+    /**
+     * Меняет срок подписки: продлевает от текущей даты либо срока, а при [subtract] — убавляет.
+     * Отрицательный [durationMinutes] по-прежнему означает «бессрочно» (только без [subtract]).
+     */
+    fun extendClient(clientId: String, durationMinutes: Int, subtract: Boolean = false) {
         val client = _state.value.clients.find { it.id == clientId } ?: return
         val now = Instant.now()
         val currentExpiry = try {
             Instant.parse(client.expires_at)
         } catch (e: Exception) { now }
         val wasExpired = !isUnlimited(client.expires_at) && currentExpiry.isBefore(now)
+        val action = if (subtract) "Уменьшение срока" else "Продление"
 
-        val newExpiry = if (durationMinutes < 0) {
+        if (subtract) {
+            if (isUnlimited(client.expires_at)) {
+                _state.value = _state.value.copy(
+                    notice = "У бессрочной подписки срока нет — убавлять нечего."
+                )
+                return
+            }
+            if (wasExpired) {
+                _state.value = _state.value.copy(
+                    notice = "Срок подписки уже истёк — убавлять нечего."
+                )
+                return
+            }
+        }
+
+        val newExpiry = if (subtract) {
+            // Отсчёт от оставшегося срока; если убавили больше, чем осталось — подписка
+            // истекает сразу (не раньше текущего момента).
+            val candidate = currentExpiry.minus(durationMinutes.toLong().coerceAtLeast(0), ChronoUnit.MINUTES)
+            if (candidate.isBefore(now)) now else candidate
+        } else if (durationMinutes < 0) {
             UNLIMITED_EXPIRY
         } else if (currentExpiry.isBefore(now)) {
             now.plus(durationMinutes.toLong(), ChronoUnit.MINUTES)
         } else {
             currentExpiry.plus(durationMinutes.toLong(), ChronoUnit.MINUTES)
         }
+        // Убавление, приведшее к немедленному истечению, применяем на сервере сразу.
+        val needsSweepNow = subtract && !newExpiry.isAfter(now)
 
         updateClient(clientId) {
             it.copy(
                 expires_at = newExpiry.toString(),
-                blocked = false
+                blocked = if (subtract) it.blocked else false
             )
         }
         val updated = _state.value.clients.find { it.id == clientId } ?: client
@@ -870,9 +897,20 @@ class AdminViewModel(
                     .onFailure { e ->
                         val detail = (e as? ServerCommandException)?.message ?: e.message
                         _state.value = _state.value.copy(
-                            error = "Продление не синхронизировано с сервером (SSH: ${detail?.takeIf { it.isNotBlank() } ?: "ошибка"}). Автоотзыв на сервере будет по старому сроку."
+                            error = "$action не синхронизировано с сервером (SSH: ${detail?.takeIf { it.isNotBlank() } ?: "ошибка"}). Автоотзыв на сервере будет по старому сроку."
                         )
                     }
+                    .onSuccess {
+                        if (subtract) {
+                            _state.value = _state.value.copy(
+                                notice = "Срок подписки уменьшён: ${updated.name.ifBlank { clientId }}."
+                            )
+                        }
+                    }
+                if (needsSweepNow) {
+                    // Срок уже прошёл: sweeper должен отозвать доступ немедленно, а не по таймеру.
+                    shareRepo.sweep(server.ssh)
+                }
                 if (wasExpired) {
                     // Истёкшего клиента sweeper уже снял с allowlist, а set-expiry ставит
                     // только маркер. Возрождаем доступ: peer-conf / client-add с будущим
@@ -891,7 +929,7 @@ class AdminViewModel(
                             result.onFailure { e ->
                                 val detail = (e as? ServerCommandException)?.message ?: e.message
                                 _state.value = _state.value.copy(
-                                    error = "Продление не выдано на сервере (SSH: ${detail?.takeIf { it.isNotBlank() } ?: "ошибка"}). Гость пока не сможет подключиться."
+                                    error = "$action не выдано на сервере (SSH: ${detail?.takeIf { it.isNotBlank() } ?: "ошибка"}). Гость пока не сможет подключиться."
                                 )
                             }
                             refreshRegistrationStatus()

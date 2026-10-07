@@ -101,7 +101,7 @@
     <string name="add_server_title">Соединение</string>
     <string name="add_paste_hint">Вставьте ссылку</string>
     <string name="add_paste_button">Вставить</string>
-    <string name="add_paste_not_link">В буфере обмена нет ссылки freeturn://</string>
+    <string name="add_paste_not_link">В буфере обмена нет ссылки freefi://</string>
     <string name="add_methods_section">Другие способы подключения</string>
     <string name="add_self_hosted_title">Свой сервер</string>
     <string name="add_self_hosted_desc">Самостоятельная настройка подключения к серверу</string>
@@ -593,7 +593,7 @@
 
     <!-- О проекте -->
     <string name="settings_about">О проекте</string>
-    <string name="settings_about_desc">Версия, описание и ссылки</string>
+    <string name="settings_about_desc">Версия</string>
     <string name="about_description">FreeFi проксирует WireGuard и Xray-трафик через публичные TURN-сервера. Открытый исходный код и никакой телеметрии: все настройки хранятся только на вашем устройстве.</string>
     <string name="about_links">Ссылки</string>
 </resources>
